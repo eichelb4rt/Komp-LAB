@@ -83,17 +83,18 @@ class TransitionFunction:
 
 
 class TuringMachine:
-    def __init__(self, n_states: int, transition_function: TransitionFunction) -> None:
+    def __init__(self, n_states: int, transition_function: TransitionFunction, logging=False) -> None:
         # TODO: do sth with this?
         self.n_states = n_states
         self.transition_function = transition_function
         self.tape: list[Char] = ['S', '_']
         self.head: int = 1
         self.state: int | EndStates = 0
+        self.logging = logging
 
     def read(self) -> Char:
         return self.tape[self.head]
-    
+
     def write(self, char: Char):
         self.tape[self.head] = char
 
@@ -105,6 +106,9 @@ class TuringMachine:
         self.tape = str_to_chars(f"S{input}_")
         self.head = 1
         self.state = 0
+        # log starting state
+        if self.logging:
+            print(self)
         # run until in end state
         while not is_endstate(self.state):
             # find out what needs to happen
@@ -124,14 +128,17 @@ class TuringMachine:
             # that should not happen, but it will if your turing machine is weird
             if self.head < 0:
                 raise IndexError("Head can't go to the left of the start of the tape.")
+            # log current state
+            if self.logging:
+                print(self)
         return self.state
-    
+
     def accepts(self, input: str | list[Char]) -> bool:
         return self.run(input) == EndStates.ACCEPT
-    
+
     def rejects(self, input: str | list[Char]) -> bool:
         return self.run(input) == EndStates.REJECT
-    
+
     def result(self, input: str | list[Char]) -> str:
         end_state = self.run(input)
         if end_state != EndStates.HALT:
@@ -142,28 +149,39 @@ class TuringMachine:
         # return everything but the start symbol
         return result[1:]
 
+    def __repr__(self) -> str:
+        # state: (state)
+        # tape: S10100101010_
+        #           ^
+        return f"state: {self.state}\ntape: {chars_to_str(self.tape)}\n{' ' * (self.head + len('tape: '))}^"
+
     @staticmethod
-    def from_file(filename: str) -> Self:
+    def from_file(filename: str, logging=False) -> Self:
         with open(filename, 'r') as f:
             firstline = f.readline()
             n_states, _ = [int(c) for c in firstline.split(" ")]
         fun = TransitionFunction.from_file(filename)
-        return TuringMachine(n_states, fun)
+        return TuringMachine(n_states, fun, logging)
 
 
 def main():
     assert EndStates.ACCEPT != 'y'
     assert EndStates.ACCEPT == EndStates('y')
     assert EndStates.ACCEPT in EndStates
+
     state: int | EndStates = 0
     assert type(state) == int
     state = EndStates.ACCEPT
     assert type(state) == EndStates
+
     fun: TransitionFunction = TransitionFunction.from_file("tm1.txt")
     print(fun)
     assert fun.get(0, '0') == (0, '1', Directions.R)
-    tm: TuringMachine = TuringMachine.from_file("tm1.txt")
+
+    tm: TuringMachine = TuringMachine.from_file("tm1.txt", logging=True)
+    print("run 1:\n======")
     assert tm.result("") == ""
+    print("run 2:\n======")
     assert tm.result("010010") == "111111"
 
 
