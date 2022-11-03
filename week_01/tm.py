@@ -88,18 +88,19 @@ class TransitionFunction:
 
 class TuringMachine:
     def __init__(self, n_states: int, transition_function: TransitionFunction, logging=False) -> None:
-        # TODO: do sth with this?
+        # TODO: do sth with this? (i'm not using n_states anywhere)
         self.n_states = n_states
         self.transition_function = transition_function
+        self.logging = logging
         self.tape: list[Char] = ['S', '_']
         self.head: int = 1
         self.state: int | EndStates = 0
-        self.logging = logging
+        self.time: int = 0
 
-    def read(self) -> Char:
+    def __read(self) -> Char:
         return self.tape[self.head]
 
-    def write(self, char: Char):
+    def __write(self, char: Char):
         self.tape[self.head] = char
 
     def run(self, input: str | list[Char]) -> EndStates:
@@ -110,17 +111,19 @@ class TuringMachine:
         self.tape = str_to_chars(f"S{input}_")
         self.head = 1
         self.state = 0
+        self.time = 0
         # log starting state
         if self.logging:
             print(self)
         # run until in end state
         while not is_endstate(self.state):
+            self.time += 1
             # find out what needs to happen
-            char = self.read()
+            char = self.__read()
             next_state, write_char, step_dir = self.transition_function.get(self.state, char)
             # make it happen
             self.state = next_state
-            self.write(write_char)
+            self.__write(write_char)
             # move head
             if step_dir == Directions.L:
                 self.head -= 1
@@ -145,6 +148,7 @@ class TuringMachine:
 
     def result(self, input: str | list[Char]) -> str:
         end_state = self.run(input)
+        # if we didn't halt, but instead accepted or rejected, the result is supposed to be a function output
         if end_state != EndStates.HALT:
             return ""
         result = chars_to_str(self.tape)
@@ -154,10 +158,10 @@ class TuringMachine:
         return result[1:]
 
     def __repr__(self) -> str:
-        # state: (state)
-        # tape: S10100101010_
-        #           ^
-        return f"state: {self.state}\ntape: {chars_to_str(self.tape)}\n{' ' * (self.head + len('tape: '))}^"
+        # time: 2,  state: 0
+        # tape: S11101_
+        #          ^
+        return f"time: {self.time},\tstate: {self.state}\ntape: {chars_to_str(self.tape)}\n{' ' * (self.head + len('tape: '))}^"
 
     @staticmethod
     def from_file(filename: str, logging=False) -> Self:
