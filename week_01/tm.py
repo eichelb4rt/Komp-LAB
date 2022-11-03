@@ -43,6 +43,10 @@ class TransitionFunction:
         self.__transitions: dict[TransitionIn, TransitionOut] = {}
 
     def get(self, state: int, char: Char) -> TransitionOut:
+        # if we didn't specify this combination, we reject
+        if (state, char) not in self.__transitions:
+            return (EndStates.REJECT, char, Directions.N)
+        # otherwise just return the matching transition
         return self.__transitions[(state, char)]
 
     def __repr__(self) -> str:
@@ -178,11 +182,19 @@ def main():
     print(fun)
     assert fun.get(0, '0') == (0, '1', Directions.R)
 
-    tm: TuringMachine = TuringMachine.from_file("tm1.txt", logging=True)
+    # tm1 counts the number of characters in the input
+    tm1: TuringMachine = TuringMachine.from_file("tm1.txt", logging=True)
     print("run 1:\n======")
-    assert tm.result("") == ""
+    assert tm1.result("") == ""
     print("run 2:\n======")
-    assert tm.result("010010") == "111111"
+    assert tm1.result("010010") == "111111"
+    
+    # tm2 only accepts words that only 1s
+    tm2: TuringMachine = TuringMachine.from_file("tm2.txt", logging=True)
+    print("run 3:\n======")
+    assert tm2.rejects("11101")
+    print("run 4:\n======")
+    assert tm2.accepts("11111")
 
 
 if __name__ == "__main__":
