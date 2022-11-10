@@ -103,7 +103,34 @@ class TuringMachine:
     def __write(self, char: Char):
         self.tape[self.head] = char
 
+    def step(self):
+        """Does one (1) step for the TM."""
+
+        self.time += 1
+        # find out what needs to happen
+        char = self.__read()
+        next_state, write_char, step_dir = self.transition_function.get(self.state, char)
+        # that should not happen, but it will if your turing machine is weird
+        if char == 'S' and write_char != 'S':
+            raise RuntimeError("Start symbol can't be overwritten.")
+        # make it happen
+        self.state = next_state
+        self.__write(write_char)
+        # move head
+        if step_dir == Directions.L:
+            self.head -= 1
+        elif step_dir == Directions.R:
+            self.head += 1
+        # expand tape if necessary (we don't actually have infinite memory)
+        if self.head >= len(self.tape):
+            self.tape.append('_')
+        # that should not happen, but it will if your turing machine is weird
+        if self.head < 0:
+            raise IndexError("Head can't go to the left of the start of the tape.")
+
     def run(self, input: str | list[Char]) -> EndStates:
+        """Runs the TM until it is in an end state."""
+
         # convert char list to str
         if type(input) == list[Char]:
             input = chars_to_str(input)
@@ -117,45 +144,44 @@ class TuringMachine:
             print(self)
         # run until in end state
         while not is_endstate(self.state):
-            self.time += 1
-            # find out what needs to happen
-            char = self.__read()
-            next_state, write_char, step_dir = self.transition_function.get(self.state, char)
-            # make it happen
-            self.state = next_state
-            self.__write(write_char)
-            # move head
-            if step_dir == Directions.L:
-                self.head -= 1
-            elif step_dir == Directions.R:
-                self.head += 1
-            # expand tape if necessary (we don't actually have infinite memory)
-            if self.head >= len(self.tape):
-                self.tape.append('_')
-            # that should not happen, but it will if your turing machine is weird
-            if self.head < 0:
-                raise IndexError("Head can't go to the left of the start of the tape.")
+            self.step()
             # log current state
             if self.logging:
                 print(self)
         return self.state
 
-    def accepts(self, input: str | list[Char]) -> bool:
-        return self.run(input) == EndStates.ACCEPT
+    def output(self) -> EndStates | str:
+        """Returns the output if the TM halts. Otherwise returns end state (accept/reject)."""
 
-    def rejects(self, input: str | list[Char]) -> bool:
-        return self.run(input) == EndStates.REJECT
-
-    def result(self, input: str | list[Char]) -> str:
-        end_state = self.run(input)
-        # if we didn't halt, but instead accepted or rejected, the result is supposed to be a function output
-        if end_state != EndStates.HALT:
-            return ""
+        if self.state != EndStates.HALT:
+            return self.state
         result = chars_to_str(self.tape)
         # remove trailing blanks: convert '_' to whitespace, remove whitespace on the right, convert whitespace back to '_'
         result = result.replace("_", " ").rstrip().replace(" ", "_")
         # return everything but the start symbol
         return result[1:]
+
+    ################################################################
+    # all of these three (3) functions run the turing machine
+    ################################################################
+
+    def accepts(self, input: str | list[Char]) -> bool:
+        """Runs the TM on the input and finds returns True if the input is accepted by the TM."""
+
+        return self.run(input) == EndStates.ACCEPT
+
+    def rejects(self, input: str | list[Char]) -> bool:
+        """Runs the TM on the input and finds returns True if the input is rejected by the TM."""
+
+        return self.run(input) == EndStates.REJECT
+
+    def result(self, input: str | list[Char]) -> str:
+        """Runs the TM on the input and finds returns the output if TM halts. Otherwise returns an empty string."""
+
+        # if we didn't halt, but instead accepted or rejected, the result is supposed to be a function output
+        if self.run(input) != EndStates.HALT:
+            return ""
+        return self.output()
 
     def __repr__(self) -> str:
         # time: 2,  state: 0
@@ -172,7 +198,9 @@ class TuringMachine:
         return TuringMachine(n_states, fun, logging)
 
 
-def main():
+def test():
+    """Tests my implementation."""
+
     assert EndStates.ACCEPT != 'y'
     assert EndStates.ACCEPT == EndStates('y')
     assert EndStates.ACCEPT in EndStates
@@ -192,13 +220,25 @@ def main():
     assert tm1.result("") == ""
     print("run 2:\n======")
     assert tm1.result("010010") == "111111"
-    
+
     # tm2 only accepts words that only 1s
     tm2: TuringMachine = TuringMachine.from_file("tm2.txt", logging=True)
     print("run 3:\n======")
     assert tm2.rejects("11101")
     print("run 4:\n======")
     assert tm2.accepts("11111")
+
+    # tm3 does other stuff
+    tm3: TuringMachine = TuringMachine.from_file("Verdopplung1.txt", logging=True)
+    print("run 5:\n======")
+    assert tm3.result("1111") == "11111111"
+
+
+def main():
+    test()
+    # TODO: argparse stuff
+    # TODO: animate
+    # TODO: reject if it goes to the left of the tape or if S is overwritten
 
 
 if __name__ == "__main__":
