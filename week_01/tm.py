@@ -230,16 +230,13 @@ class TuringMachine:
         window.addstr(snapshots[current_snapshot] + "\n")
 
         # animate
-        while True:
-            # we can leave by pressing Enter
-            key = window.getkey()
-            if key == os.linesep:
-                if is_endstate(self.state):
-                    return self.state
-                return EndStates.HALT
+        key = window.getkey()
+        # we can leave by pressing Enter
+        while key != os.linesep:
             # now if the key is not a direction, just wait for the next direction
             if key not in ANIMATION_DIRECTION_STRINGS:
                 continue
+            
             # navigate with direction keys
             direction = AnimationDirections(key)
             if direction == AnimationDirections.LEFT:
@@ -255,6 +252,7 @@ class TuringMachine:
                 if current_snapshot == len(snapshots):
                     self.step()
                     snapshots.append(str(self))
+            
             # display the current snapshot
             window.clear()
             window.addstr("To leave animation, press Enter.\n")
@@ -265,12 +263,20 @@ class TuringMachine:
                 if not result:
                     result = self.output()
                 window.addstr(f"Result: {result}")
+            # get the next key
+            key = window.getkey()
+        
+        # if an endstate wasn't reached, just keep running until the end
+        while not is_endstate(self.state):
+            self.step()
+        return self.state
 
-    def animate(self, input: str | list[Char]):
+    def animate(self, input: str | list[Char]) -> EndStates:
         """Builds a curses window and animates the TM in it."""
 
         animation = lambda window: self.__run_animation(input, window)
         curses.wrapper(animation)
+        return self.state
         
     ################################################################
     # utility
