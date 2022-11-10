@@ -1,7 +1,25 @@
+import os
 import re
+import curses
 from enum import Enum
 from tabulate import tabulate
-from typing import Literal, Self
+from typing import Literal, Self, TYPE_CHECKING
+
+# this stuff is kinda weird (but it's needed)
+if TYPE_CHECKING:
+    from _curses import _CursesWindow
+    Window = _CursesWindow
+else:
+    from typing import Any
+    Window = Any
+
+
+class AnimationDirections(Enum):
+    LEFT = 'KEY_LEFT'
+    RIGHT = 'KEY_RIGHT'
+
+
+ANIMATION_DIRECTION_STRINGS = [state.value for state in AnimationDirections]
 
 
 class EndStates(Enum):
@@ -183,6 +201,81 @@ class TuringMachine:
             return ""
         return self.output()
 
+    ################################################################
+    # animation stuff
+    ################################################################
+
+    def __run_animation(self, input: str | list[Char], window: Window) -> EndStates:
+        """Runs and animates the TM in a curses window."""
+
+        # convert char list to str
+        if type(input) == list[Char]:
+            input = chars_to_str(input)
+        # put input on tape in between and initialize head and state
+        self.tape = str_to_chars(f"S{input}_")
+        self.head = 1
+        self.state = 0
+        self.time = 0
+
+        # animation stuff
+        # snapshots of the TM at any given time (just string representations)
+        snapshots: list[str] = []
+        current_snapshot = 0
+        snapshots.append(str(self))
+        # cached result of the run of the TM
+        result = None
+        # display first snapshot
+        window.clear()
+        window.addstr("To leave animation, press Enter.\n")
+        window.addstr(snapshots[current_snapshot] + "\n")
+
+        # animate
+        while True:
+            # we can leave by pressing Enter
+            key = window.getkey()
+            if key == os.linesep:
+                if is_endstate(self.state):
+                    return self.state
+                return EndStates.HALT
+            # now if the key is not a direction, just wait for the next direction
+            if key not in ANIMATION_DIRECTION_STRINGS:
+                continue
+            # navigate with direction keys
+            direction = AnimationDirections(key)
+            if direction == AnimationDirections.LEFT:
+                current_snapshot -= 1
+                # don't go before the first snapshot
+                current_snapshot = max(current_snapshot, 0)
+            elif direction == AnimationDirections.RIGHT:
+                current_snapshot += 1
+                # don't go any further if we reached the end
+                if is_endstate(self.state):
+                    current_snapshot = min(current_snapshot, len(snapshots) - 1)
+                # if we haven't calculated this snapshot yet, calculate it now
+                if current_snapshot == len(snapshots):
+                    self.step()
+                    snapshots.append(str(self))
+            # display the current snapshot
+            window.clear()
+            window.addstr("To leave animation, press Enter.\n")
+            window.addstr(snapshots[current_snapshot] + "\n")
+            # on the last snapshot, also print the result
+            if current_snapshot == len(snapshots) - 1 and is_endstate(self.state):
+                # cache it like it's hot
+                if not result:
+                    result = self.output()
+                window.addstr(f"Result: {result}")
+
+    def animate(self, input: str | list[Char]):
+        """Builds a curses window and animates the TM in it."""
+
+        animation = lambda window: self.__run_animation(input, window)
+        curses.wrapper(animation)
+        
+    ################################################################
+    # utility
+    ################################################################
+
     def __repr__(self) -> str:
         # time: 2,  state: 0
         # tape: S11101_
@@ -231,13 +324,14 @@ def test():
     # tm3 does other stuff
     tm3: TuringMachine = TuringMachine.from_file("Verdopplung1.txt", logging=True)
     print("run 5:\n======")
-    assert tm3.result("1111") == "11111111"
+    assert tm3.result("1111") == "1111_1111"
+    
+    tm3.animate("11111")
 
 
 def main():
     test()
     # TODO: argparse stuff
-    # TODO: animate
     # TODO: reject if it goes to the left of the tape or if S is overwritten
 
 
