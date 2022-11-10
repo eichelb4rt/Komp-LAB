@@ -1,6 +1,7 @@
 import os
 import re
 import curses
+import argparse
 from enum import Enum
 from tabulate import tabulate
 from typing import Literal, Self, TYPE_CHECKING
@@ -232,11 +233,12 @@ class TuringMachine:
         # animate
         key = window.getkey()
         # we can leave by pressing Enter
-        while key != os.linesep:
+        while key != os.linesep and key != 'q':
             # now if the key is not a direction, just wait for the next direction
             if key not in ANIMATION_DIRECTION_STRINGS:
+                key = window.getkey()
                 continue
-            
+
             # navigate with direction keys
             direction = AnimationDirections(key)
             if direction == AnimationDirections.LEFT:
@@ -252,7 +254,7 @@ class TuringMachine:
                 if current_snapshot == len(snapshots):
                     self.step()
                     snapshots.append(str(self))
-            
+
             # display the current snapshot
             window.clear()
             window.addstr("To leave animation, press Enter.\n")
@@ -265,7 +267,7 @@ class TuringMachine:
                 window.addstr(f"Result: {result}")
             # get the next key
             key = window.getkey()
-        
+
         # if an endstate wasn't reached, just keep running until the end
         while not is_endstate(self.state):
             self.step()
@@ -277,7 +279,7 @@ class TuringMachine:
         animation = lambda window: self.__run_animation(input, window)
         curses.wrapper(animation)
         return self.state
-        
+
     ################################################################
     # utility
     ################################################################
@@ -310,35 +312,52 @@ def test():
     assert type(state) == EndStates
 
     fun: TransitionFunction = TransitionFunction.from_file("tm1.txt")
-    print(fun)
     assert fun.get(0, '0') == (0, '1', Directions.R)
 
     # tm1 counts the number of characters in the input
-    tm1: TuringMachine = TuringMachine.from_file("tm1.txt", logging=True)
-    print("run 1:\n======")
+    tm1: TuringMachine = TuringMachine.from_file("tm1.txt")
     assert tm1.result("") == ""
-    print("run 2:\n======")
     assert tm1.result("010010") == "111111"
 
     # tm2 only accepts words that only 1s
-    tm2: TuringMachine = TuringMachine.from_file("tm2.txt", logging=True)
-    print("run 3:\n======")
+    tm2: TuringMachine = TuringMachine.from_file("tm2.txt")
     assert tm2.rejects("11101")
-    print("run 4:\n======")
     assert tm2.accepts("11111")
 
     # tm3 does other stuff
-    tm3: TuringMachine = TuringMachine.from_file("Verdopplung1.txt", logging=True)
-    print("run 5:\n======")
+    tm3: TuringMachine = TuringMachine.from_file("Verdopplung1.txt")
+    assert tm3.result("") == ""
     assert tm3.result("1111") == "1111_1111"
-    
-    tm3.animate("11111")
 
 
 def main():
-    test()
-    # TODO: argparse stuff
-    # TODO: reject if it goes to the left of the tape or if S is overwritten
+    parser = argparse.ArgumentParser(description="Runs a Turing Machine on an input text.")
+    parser.add_argument("filename",
+                        help="File with the encoded Turing Machine.")
+    parser.add_argument("-i", "--fileinput",
+                        action='store_true',
+                        help="Read input from filename instead of positional argument.")
+    parser.add_argument("input",
+                        help="Input to the Turing Machine (or file with the input if -i was set).")
+    parser.add_argument("-a", "--animate",
+                        action='store_true',
+                        help="Animate the Turing Machine.")
+    args = parser.parse_args()
+    
+    # read turing machine
+    tm: TuringMachine = TuringMachine.from_file(args.filename)
+    # read machine input
+    if args.fileinput:
+        with open(args.input, 'r') as f:
+            tm_input = f.read().strip()
+    else:
+        tm_input = args.input
+    # run tm
+    if args.animate:
+        tm.animate(tm_input)
+    else:
+        tm.run(tm_input)
+        print(tm.output())
 
 
 if __name__ == "__main__":
