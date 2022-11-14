@@ -153,7 +153,7 @@ class TransitionFunction:
                     assert char in alphabet or char in SPECIAL_CHARS, f"Observed char ({char}) not in alphabet ({alphabet})."
             # assert that the transition function actually looks like it's supposed to look
             assert n_lines == observed_lines, f"Observed line count ({observed_lines}) does not equal promised line count ({n_lines})."
-            assert n_states == len(observed_states), f"Observed state count ({observed_states}) does not equal promised state count ({n_states})."
+            assert n_states == len(observed_states), f"Observed state count ({observed_states}, {len(observed_states)} states) does not equal promised state count ({n_states})."
         return fun
 
     @staticmethod
@@ -488,14 +488,17 @@ def test():
         word = "0" * (n + 1) + "1" * (n + 1) + "0" * n
         assert tm_task1.rejects(word), f"Task 1 failed: {word} not rejected."
     # tm_task2 should add 2 binary numbers
-    tm_task2: TuringMachine = TuringMachine.from_file("task2a.txt")
+    tm_task2a: TuringMachine = TuringMachine.from_file("task2a.txt")
+    tm_task2b: TuringMachine = TuringMachine.from_file("task2b.txt")
     n_numbers_tested = 20
     for x in range(n_numbers_tested):
         for y in range(n_numbers_tested):
             word = f"{bin(x)[2:]}${bin(y)[2:]}"
             expected_result = bin(x + y)[2:]
-            result = tm_task2.result(word)
-            assert result == expected_result, f"Task 2a failed: input = {word}, result = {result}, expected = {expected_result}"
+            result_2a = tm_task2a.result(word)
+            assert result_2a == expected_result, f"Task 2a failed: input = {word}, result = {result_2a}, expected = {expected_result}"
+            result_2b = tm_task2b.result(word)
+            assert result_2b == expected_result, f"Task 2b failed: input = {word}, result = {result_2b}, expected = {expected_result}"
 
     print("all tests passed.")
 
