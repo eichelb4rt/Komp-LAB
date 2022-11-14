@@ -460,15 +460,59 @@ def test():
     state = EndStates.ACCEPT
     assert type(state) == EndStates
 
-    fun: TransitionFunction = TransitionFunction.from_file("tm5.txt")
-    # assert fun.get(0, ['0']) == (0, [('1', Directions.R)])
+    fun: TransitionFunction = TransitionFunction.from_file("tm4.txt")
+    assert fun.get(0, ['0']) == (0, [('1', Directions.R)])
 
     tm5: TuringMachine = TuringMachine.from_file("tm5.txt")
     assert tm5.result("0100$1101") == "1001"
 
+    # test Turing Machines that were part of the task
+    # tm_task1 should accept 0^n 1^n 0^n
+    tm_task1: TuringMachine = TuringMachine.from_file("task1.txt")
+    for n in range(20):
+        # 010
+        word = "0" * n + "1" * n + "0" * n
+        assert tm_task1.accepts(word), f"Task 1 failed: {word} not accepted."
+        # 0100, 0110, 0010
+        word = "0" * n + "1" * n + "0" * (n + 1)
+        assert tm_task1.rejects(word), f"Task 1 failed: {word} not rejected."
+        word = "0" * n + "1" * (n + 1) + "0" * n
+        assert tm_task1.rejects(word), f"Task 1 failed: {word} not rejected."
+        word = "0" * (n + 1) + "1" * n + "0" * n
+        assert tm_task1.rejects(word), f"Task 1 failed: {word} not rejected."
+        # 01100, 00100, 00110
+        word = "0" * n + "1" * (n + 1) + "0" * (n + 1)
+        assert tm_task1.rejects(word), f"Task 1 failed: {word} not rejected."
+        word = "0" * (n + 1) + "1" * (n + 1) + "0" * n
+        assert tm_task1.rejects(word), f"Task 1 failed: {word} not rejected."
+        word = "0" * (n + 1) + "1" * (n + 1) + "0" * n
+        assert tm_task1.rejects(word), f"Task 1 failed: {word} not rejected."
+    # tm_task2 should add 2 binary numbers
+    tm_task2: TuringMachine = TuringMachine.from_file("task2a.txt")
+    n_numbers_tested = 20
+    for x in range(n_numbers_tested):
+        for y in range(n_numbers_tested):
+            word = f"{bin(x)[2:]}${bin(y)[2:]}"
+            expected_result = bin(x + y)[2:]
+            result = tm_task2.result(word)
+            assert result == expected_result, f"Task 2a failed: input = {word}, result = {result}, expected = {expected_result}"
+
+    print("all tests passed.")
+
+
+class test_action(argparse.Action):
+    """This class is for the test flag."""
+
+    def __init__(self, option_strings, dest, **kwargs):
+        return super().__init__(option_strings, dest, nargs=0, default=argparse.SUPPRESS, **kwargs)
+
+    def __call__(self, parser, namespace, values, option_string, **kwargs):
+        # if testing flag was set, ignore everything else and just test
+        test()
+        parser.exit()
+
 
 def main():
-    test()
     parser = argparse.ArgumentParser(description="Runs a Turing Machine on an input text.")
     parser.add_argument("filename",
                         help="File with the encoded Turing Machine.")
@@ -483,13 +527,16 @@ def main():
     parser.add_argument("-l", "--logging",
                         action='store_true',
                         help="Logs the snapshots of the Turing Machine.")
-    parser.add_argument("-t", "--transitions",
+    parser.add_argument("-s", "--showtransitions",
                         action='store_true',
                         help="Shows the transition table with the animation or log.")
+    parser.add_argument("-t", "--test",
+                        action=test_action,
+                        help="Tests the implementation and the Turing Machines that were part of the task.")
     args = parser.parse_args()
 
     # read turing machine
-    tm: TuringMachine = TuringMachine.from_file(args.filename, args.logging, args.transitions)
+    tm: TuringMachine = TuringMachine.from_file(args.filename, args.logging, args.showtransitions)
     # read machine input
     if args.fileinput:
         with open(args.input, 'r') as f:

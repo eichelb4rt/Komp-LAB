@@ -1,0 +1,54 @@
+7 4 3 36
+0,1,$
+################################################################
+# move 1st head to $
+0,0,_,_,_,0,0,R,_,N,_,N,_,N
+0,1,_,_,_,0,1,R,_,N,_,N,_,N
+0,$,_,_,_,1,_,R,_,N,_,N,_,N
+# move 2nd number to second band
+1,0,_,_,_,1,_,R,0,R,_,N,_,N
+1,1,_,_,_,1,_,R,1,R,_,N,_,N
+# when done, go back to number
+1,_,_,_,_,2,_,N,_,N,_,N,_,N
+# move 1st head back to number
+2,_,_,_,_,2,_,L,_,N,_,N,_,N
+2,0,_,_,_,3,0,N,_,N,_,N,_,N
+2,1,_,_,_,3,1,N,_,N,_,N,_,N
+# move 2nd head back to number
+3,0,_,_,_,3,0,N,_,L,_,N,_,N
+3,1,_,_,_,3,1,N,_,L,_,N,_,N
+# if i see a number, stop
+3,0,0,_,_,4,0,N,0,N,_,N,_,N
+3,0,1,_,_,4,0,N,1,N,_,N,_,N
+3,1,0,_,_,4,1,N,0,N,_,N,_,N
+3,1,1,_,_,4,1,N,1,N,_,N,_,N
+################################################################
+# add the numbers, write result (in reverse) on 3rd tape
+# no overhead = q_4
+4,0,0,_,_,4,0,L,0,L,0,R,_,N
+4,0,1,_,_,4,0,L,1,L,1,R,_,N
+4,1,0,_,_,4,1,L,0,L,1,R,_,N
+4,1,1,_,_,5,1,L,1,L,0,R,_,N
+# overhead = q_5
+5,0,0,_,_,4,0,L,0,L,1,R,_,N
+5,0,1,_,_,5,0,L,1,L,0,R,_,N
+5,1,0,_,_,5,1,L,0,L,0,R,_,N
+5,1,1,_,_,5,1,L,1,L,1,R,_,N
+# start symbol (S) can be treated like a 0 but the head shouldn't move anymore
+4,0,S,_,_,4,0,L,S,N,0,R,_,N
+4,S,0,_,_,4,S,N,0,L,0,R,_,N
+4,S,1,_,_,4,S,N,1,L,1,R,_,N
+4,1,S,_,_,4,1,L,S,N,1,R,_,N
+5,0,S,_,_,4,0,L,S,N,1,R,_,N
+5,S,0,_,_,4,S,N,0,L,1,R,_,N
+5,S,S,_,_,4,S,N,S,N,1,R,_,N
+5,S,1,_,_,5,S,N,1,L,0,R,_,N
+5,1,S,_,_,5,1,L,S,N,0,R,_,N
+# stop when there is no overhead and both numbers are done
+4,S,S,_,_,6,S,N,S,N,_,L,_,N
+################################################################
+# reverse the output
+6,S,S,0,_,6,S,N,S,N,0,L,0,R
+6,S,S,1,_,6,S,N,S,N,1,L,1,R
+6,S,S,S,_,h,S,N,S,N,S,N,_,N
+
