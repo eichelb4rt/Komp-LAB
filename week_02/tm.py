@@ -113,11 +113,11 @@ class TransitionFunction:
             colalign=["center"] * 5,
             tablefmt='simple_grid')
 
-    def __add(self, input: TransitionIn, output: TransitionOut):
+    def _add(self, input: TransitionIn, output: TransitionOut):
         self.__transitions[to_key(input)] = output
 
-    @staticmethod
-    def from_file(filename: str) -> Self:
+    @classmethod
+    def from_file(cls, filename: str) -> Self:
         with open(filename, 'r') as f:
             # read how the transition function is supposed to look
             # ignore comments
@@ -137,7 +137,7 @@ class TransitionFunction:
                     continue
                 # add transition
                 trans_in, trans_out = TransitionFunction.parse_line(line, n_tapes)
-                fun.__add(trans_in, trans_out)
+                fun._add(trans_in, trans_out)
                 # collect observed states, chars, ...
                 state_in, chars_in = trans_in
                 state_out, chars_dirs_out = trans_out
@@ -156,8 +156,8 @@ class TransitionFunction:
             assert n_states == len(observed_states), f"Observed state count ({observed_states}, {len(observed_states)} states) does not equal promised state count ({n_states})."
         return fun
 
-    @staticmethod
-    def parse_line(line: str, n_tapes: int) -> tuple[TransitionIn, TransitionOut]:
+    @classmethod
+    def parse_line(cls, line: str, n_tapes: int) -> tuple[TransitionIn, TransitionOut]:
         # remove all whitespace and line breaks
         line = re.sub(r"\s+", "", line)
         # read entries and make sure it's the right amount
@@ -182,16 +182,16 @@ class TransitionFunction:
 
 
 class Tape:
-    def __init__(self, input: str | list[Char] = None) -> None:
-        if input is None:
+    def __init__(self, machine_input: str | list[Char] = None) -> None:
+        if machine_input is None:
             # write standard stuff on tape
             self.chars: list[Char] = ['S', '_']
         else:
             # convert char list to str
-            if type(input) == list[Char]:
-                input = chars_to_str(input)
+            if type(machine_input) == list[Char]:
+                machine_input = chars_to_str(machine_input)
             # put input on tape in between and initialize head and state
-            self.chars = str_to_chars(f"S{input}_")
+            self.chars = str_to_chars(f"S{machine_input}_")
         self.head = 1
 
     def read(self) -> Char:
@@ -324,26 +324,31 @@ class TuringMachine:
         return result[1:]
 
     ################################################################
-    # all of these three (3) functions run the turing machine
+    # all of these four (4) functions run the turing machine
     ################################################################
 
     def accepts(self, input: str | list[Char]) -> bool:
-        """Runs the TM on the input and finds returns True if the input is accepted by the TM."""
+        """Runs the TM on the input and returns True if the input is accepted by the TM."""
 
         return self.run(input) == EndStates.ACCEPT
 
     def rejects(self, input: str | list[Char]) -> bool:
-        """Runs the TM on the input and finds returns True if the input is rejected by the TM."""
+        """Runs the TM on the input and returns True if the input is rejected by the TM."""
 
         return self.run(input) == EndStates.REJECT
 
     def result(self, input: str | list[Char]) -> str:
-        """Runs the TM on the input and finds returns the output if TM halts. Otherwise returns an empty string."""
+        """Runs the TM on the input and returns the output if TM halts. Otherwise returns an empty string."""
 
         # if we didn't halt, but instead accepted or rejected, the result is supposed to be a function output
         if self.run(input) != EndStates.HALT:
             return ""
         return self.output()
+
+    def runtime(self, input: str | list[Char]) -> str:
+        """Runs the TM on the input and returns the number of steps needed to reach the final state."""
+        self.run(input)
+        return self.time
 
     ################################################################
     # animation stuff
@@ -442,8 +447,8 @@ class TuringMachine:
         tape_strings = "\n".join([str(tape) for tape in self.tapes])
         return f"time: {self.time},\tstate: {self.state}\ntapes:\n{tape_strings}"
 
-    @staticmethod
-    def from_file(filename: str, logging=False, show_transitions=False) -> Self:
+    @classmethod
+    def from_file(cls, filename: str, logging=False, show_transitions=False) -> Self:
         fun: TransitionFunction = TransitionFunction.from_file(filename)
         return TuringMachine(fun.n_states, fun.n_tapes, fun, logging, show_transitions)
 
@@ -507,7 +512,7 @@ class test_action(argparse.Action):
     """This class is for the test flag."""
 
     def __init__(self, option_strings, dest, **kwargs):
-        return super().__init__(option_strings, dest, nargs=0, default=argparse.SUPPRESS, **kwargs)
+        super().__init__(option_strings, dest, nargs=0, default=argparse.SUPPRESS, **kwargs)
 
     def __call__(self, parser, namespace, values, option_string, **kwargs):
         # if testing flag was set, ignore everything else and just test
