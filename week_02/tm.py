@@ -345,8 +345,9 @@ class TuringMachine:
             return ""
         return self.output()
 
-    def runtime(self, input: str | list[Char]) -> str:
+    def runtime(self, input: str | list[Char]) -> int:
         """Runs the TM on the input and returns the number of steps needed to reach the final state."""
+        
         self.run(input)
         return self.time
 
@@ -488,7 +489,7 @@ def test():
         # 01100, 00100, 00110
         word = "0" * n + "1" * (n + 1) + "0" * (n + 1)
         assert tm_task1.rejects(word), f"Task 1 failed: {word} not rejected."
-        word = "0" * (n + 1) + "1" * (n + 1) + "0" * n
+        word = "0" * (n + 1) + "1" * n + "0" * (n + 1)
         assert tm_task1.rejects(word), f"Task 1 failed: {word} not rejected."
         word = "0" * (n + 1) + "1" * (n + 1) + "0" * n
         assert tm_task1.rejects(word), f"Task 1 failed: {word} not rejected."
@@ -538,6 +539,9 @@ def main():
     parser.add_argument("-s", "--showtransitions",
                         action='store_true',
                         help="Shows the transition table with the animation or log.")
+    parser.add_argument("--time",
+                        action='store_true',
+                        help="Shows runtime of the Turing Machine.")
     parser.add_argument("-t", "--test",
                         action=test_action,
                         help="Tests the implementation and the Turing Machines that were part of the task.")
@@ -553,10 +557,14 @@ def main():
         tm_input = args.input
     # run tm
     if args.animate:
+        # animation does not need to print output
         tm.animate(tm_input)
     else:
         tm.run(tm_input)
         print(tm.output())
+        # maybe print time as well
+        if args.time:
+            print(f"time: {tm.time}")
 
 
 if __name__ == "__main__":

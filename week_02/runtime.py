@@ -1,4 +1,6 @@
 import argparse
+import os
+from pathlib import Path
 import numpy as np
 from typing import Self
 import matplotlib.pyplot as plt
@@ -31,6 +33,8 @@ class PolyReg:
         return self.theta.T @ poly(x, self.d)
 
     def str_parameters(self, varname="x") -> str:
+        """String representation of the parameters as a polynomial of `varname`."""
+
         exponent = lambda power: f"^{power}" if power > 1 else ""
         descriptor = lambda power: f"{np.abs(self.theta[power]):.2f} * {varname}{exponent(power)}" if power != 0 else f"{np.abs(self.theta[power]):.2f}"
         # string builder
@@ -55,19 +59,22 @@ def measure(tm: TuringMachine, inputs: list[str]) -> list[int]:
     return [tm.runtime(x) for x in inputs]
 
 
-def worst_times(inputs: list[str], worsts: list[int]) -> tuple[np.ndarray, np.ndarray]:
+def worst_times(inputs: list[str], times: list[int]) -> tuple[np.ndarray, np.ndarray]:
     """Finds the worst case time for given input of length n."""
 
-    assert len(inputs) == len(worsts), "Inputs and times must be same size."
+    assert len(inputs) == len(times), "Inputs and times must be same size."
+    # dict: input length -> time
     worst_time: dict[int, int] = {}
-    for x, time in zip(inputs, worsts):
+    for x, time in zip(inputs, times):
+        # see what length the input has and compare it to the current max time of that size
         n = len(x)
-        if x not in worst_time:
+        if n not in worst_time:
             worst_time[n] = time
             continue
         worst_time[n] = max(worst_time[n], time)
-    ns, worsts = zip(*worst_time.items())
-    return np.array(ns), np.array(worsts)
+    # turn the dict into 2 lists
+    ns, times = zip(*worst_time.items())
+    return np.array(ns), np.array(times)
 
 
 def plot_regression_line(x, regression: PolyReg, step=0.1):
@@ -77,15 +84,19 @@ def plot_regression_line(x, regression: PolyReg, step=0.1):
 
 
 def approximate_time(tm: TuringMachine, inputs: list[str], max_degree=4, regularization_constant=0):
+    # get worst times
     times = measure(tm, inputs)
     n, t = worst_times(inputs, times)
+    # approximate the curve
     reg = PolyReg(max_degree, regularization_constant).fit(n, t)
     complexity = reg.str_parameters(varname="n")
     print(complexity)
+    # plot it
     plt.scatter(n, t)
     plot_regression_line(n, reg)
     plt.title(complexity)
-    plt.show()
+    # y should start at 0 to not be confusing
+    plt.ylim(ymin=0)
 
 
 def main():
@@ -102,11 +113,27 @@ def main():
                         type=float,
                         default=0,
                         help="Regularization constant for the polynomial regression.")
+    parser.add_argument("-s", "--save",
+                        action='store_true',
+                        help="Save plot instead of showing it.")
     args = parser.parse_args()
+
+    # load turing machine and inputs
     tm = TuringMachine.from_file(args.tm)
     with open(args.inputs, 'r') as f:
-        inputs = f.readlines()
+        # remove whitespace from inputs
+        inputs = [line.strip() for line in f.readlines()]
+
+    # run the program
     approximate_time(tm, inputs, args.degree, args.constant)
+
+    # either save it or show it
+    if args.save:
+        # "task1.txt -> time_task1.png"
+        basename = Path(args.tm).stem
+        plt.savefig(f"time_{basename}.png")
+    else:
+        plt.show()
 
 
 if __name__ == "__main__":

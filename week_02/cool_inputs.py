@@ -17,7 +17,7 @@ def main():
         f.write("\n".join(inputs_task1))
 
     # cool inputs for task 2
-    max_n_task2 = 50
+    max_n_task2 = 64
     inputs_task2 = [f"{bin(x)[2:]}${bin(y)[2:]}" for x in range(max_n_task2) for y in range(max_n_task2)]
     with open("inputs_task2.txt", 'w') as f:
         f.write("\n".join(inputs_task2))
