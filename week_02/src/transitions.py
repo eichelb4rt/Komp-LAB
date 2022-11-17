@@ -1,6 +1,8 @@
+import os
 import re
 from enum import Enum
 from typing import Self
+from io import TextIOWrapper
 from tabulate import tabulate
 
 
@@ -52,10 +54,18 @@ def sanitize(line: str):
     return re.sub(r"\s+", "", line)
 
 
-def skip_comments(f):
+def skip_comments(f: TextIOWrapper):
     while line := f.readline():
         if line[0] != '#':
             return line
+
+
+def transition_to_str(t_in: TransitionIn, t_out: TransitionOut) -> str:
+    state_in, chars_in = t_in
+    state_out, chars_and_dirs_out = t_out
+    chars_in_str = ",".join(chars_in)
+    chars_and_dirs_out_str = ",".join([f"{char},{direction.value}" for char, direction in chars_and_dirs_out])
+    return f"{state_in},{chars_in_str},{state_out if not is_endstate(state_out) else state_out.value},{chars_and_dirs_out_str}"
 
 
 class TransitionFunction:
@@ -93,6 +103,17 @@ class TransitionFunction:
 
     def _add(self, input: TransitionIn, output: TransitionOut):
         self.__transitions[to_key(input)] = output
+
+    def save(self, filename: str):
+        """Saves the encoded transition function to a file."""
+
+        comment = "# This Turing Machine was saved automatically from a Transition Function."
+        firstline = f"{self.n_states} {self.n_tapes} {len(self.alphabet)} {len(self.__transitions)}"
+        secondline = ",".join(self.alphabet)
+        transitions_lines = [transition_to_str(t_in, t_out) for t_in, t_out in self.__transitions.items()]
+        encoded = os.linesep.join([comment, firstline, secondline] + transitions_lines)
+        with open(filename, 'w') as f:
+            f.write(encoded)
 
     @classmethod
     def from_file(cls, filename: str) -> Self:
