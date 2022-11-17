@@ -1,19 +1,13 @@
-import argparse
-import curses
 import os
-import re
+import curses
+import argparse
 from enum import Enum
-from typing import TYPE_CHECKING, Literal, Self
+from typing import Self
 
-from tabulate import tabulate
-
-# this stuff is kinda weird (but it's needed)
-if TYPE_CHECKING:
-    from _curses import _CursesWindow
-    Window = _CursesWindow
-else:
-    from typing import Any
-    Window = Any
+import test
+from tape import Tape
+from display import ScrollableDisplay, Window
+from transitions import TransitionFunction, EndStates, Char, Directions, is_endstate, chars_to_str, str_to_chars
 
 
 class AnimationDirections(Enum):
@@ -24,231 +18,6 @@ class AnimationDirections(Enum):
 
 
 ANIMATION_DIRECTION_STRINGS = [state.value for state in AnimationDirections]
-
-
-class EndStates(Enum):
-    ACCEPT = 'y'
-    REJECT = 'n'
-    HALT = 'h'
-
-
-END_STATE_CHARS = [state.value for state in EndStates]
-
-
-class Directions(Enum):
-    L = 'L'
-    N = 'N'
-    R = 'R'
-
-
-SPECIAL_CHARS = ['S', '_']
-
-
-# just to not confuse elements of the alphabet with actual strings
-Char = str
-# input to transition function: state and character
-TransitionIn = tuple[int, list[Char]]
-# output of transtion function: state (+ end states), character (only writeable ones), direction
-TransitionOut = tuple[int | EndStates, list[tuple[Char, Directions]]]
-
-
-def str_to_chars(string: str) -> list[Char]:
-    return [c for c in string]
-
-
-def chars_to_str(chars: list[Char]):
-    return "".join(chars)
-
-
-def is_endstate(state: int | EndStates):
-    return type(state) == EndStates
-
-
-def to_key(trans_in: TransitionIn):
-    state = trans_in[0]
-    chars = tuple(trans_in[1])
-    return (state, chars)
-
-
-def sanitize(line: str):
-    return re.sub(r"\s+", "", line)
-
-
-def skip_comments(f):
-    while line := f.readline():
-        if line[0] != '#':
-            return line
-
-
-class TransitionFunction:
-    def __init__(self, n_states: int, n_tapes: int, alphabet: list[Char]):
-        self.n_states = n_states
-        self.n_tapes = n_tapes
-        self.alphabet = alphabet
-        self.__transitions: dict[TransitionIn, TransitionOut] = {}
-
-    def get(self, state: int, chars: list[Char]) -> TransitionOut:
-        # if we didn't specify this combination, we reject
-        trans_in: TransitionIn = (state, chars)
-        key = to_key(trans_in)
-        if key not in self.__transitions:
-            return (EndStates.REJECT, zip(chars, [Directions.N] * self.n_tapes))
-        # otherwise just return the matching transition
-        return self.__transitions[key]
-
-    def __repr__(self) -> str:
-        return tabulate([[
-            # state in
-            trans_in[0],
-            # chars in
-            ",".join(trans_in[1]),
-            # state out
-            trans_out[0],
-            # chars out
-            ",".join(char_out for char_out, _ in trans_out[1]),
-            # directions out
-            ",".join(direction_out.value for _, direction_out in trans_out[1])
-        ] for trans_in, trans_out in self.__transitions.items()],
-            headers=["state in", "chars in", "state out", "chars out", "directions"],
-            colalign=["center"] * 5,
-            tablefmt='simple_grid')
-
-    def _add(self, input: TransitionIn, output: TransitionOut):
-        self.__transitions[to_key(input)] = output
-
-    @classmethod
-    def from_file(cls, filename: str) -> Self:
-        with open(filename, 'r') as f:
-            # read how the transition function is supposed to look
-            # ignore comments
-            firstline = skip_comments(f)
-            n_states, n_tapes, alphabet_size, n_lines = [int(c) for c in firstline.split(" ")]
-            # ignore comments
-            secondline = sanitize(skip_comments(f))
-            alphabet = secondline.split(",")
-            assert alphabet_size == len(alphabet), "Alphabet does not have promised size."
-            # read the transition function
-            fun = TransitionFunction(n_states, n_tapes, alphabet)
-            observed_lines = 0
-            observed_states: set[Char] = set()
-            while line := sanitize(f.readline()):
-                # skip comments
-                if line[0] == '#':
-                    continue
-                # add transition
-                trans_in, trans_out = TransitionFunction.parse_line(line, n_tapes)
-                fun._add(trans_in, trans_out)
-                # collect observed states, chars, ...
-                state_in, chars_in = trans_in
-                state_out, chars_dirs_out = trans_out
-                if not is_endstate(state_in):
-                    observed_states.add(state_in)
-                if not is_endstate(state_out):
-                    observed_states.add(state_out)
-                observed_lines += 1
-                # chars need to be in alphabet
-                for char in chars_in:
-                    assert char in alphabet or char in SPECIAL_CHARS, f"Observed char ({char}) not in alphabet ({alphabet})."
-                for char, _ in chars_dirs_out:
-                    assert char in alphabet or char in SPECIAL_CHARS, f"Observed char ({char}) not in alphabet ({alphabet})."
-            # assert that the transition function actually looks like it's supposed to look
-            assert n_lines == observed_lines, f"Observed line count ({observed_lines}) does not equal promised line count ({n_lines})."
-            assert n_states == len(observed_states), f"Observed state count ({observed_states}, {len(observed_states)} states) does not equal promised state count ({n_states})."
-        return fun
-
-    @classmethod
-    def parse_line(cls, line: str, n_tapes: int) -> tuple[TransitionIn, TransitionOut]:
-        # remove all whitespace and line breaks
-        line = re.sub(r"\s+", "", line)
-        # read entries and make sure it's the right amount
-        entries = line.split(",")
-        # 1 state_in, 1 state_out, n chars_in, n chars_out, n directions
-        n_entries_expected = 2 + 3 * n_tapes
-        assert len(entries) == n_entries_expected, f"Error in processing line: {line} - not {n_entries_expected} entries."
-        # 1 state_in
-        state_in = int(entries[0])
-        # n chars_in
-        chars_in = entries[1:n_tapes + 1]
-        # 1 state_out
-        state_out = entries[n_tapes + 1]
-        state_out = int(state_out) if state_out not in END_STATE_CHARS else EndStates(state_out)
-        # n times char and directions
-        rest = entries[n_tapes + 2:]
-        chars_and_dirs_out = [(rest[2 * i], Directions(rest[2 * i + 1])) for i in range(n_tapes)]
-        # build transition entry
-        trans_in: TransitionIn = (state_in, chars_in)
-        trans_out: TransitionOut = (state_out, chars_and_dirs_out)
-        return trans_in, trans_out
-
-
-class Tape:
-    """Represents 1 tape of a Turing Machine."""
-    
-    def __init__(self, machine_input: str | list[Char] = None) -> None:
-        if machine_input is None:
-            # write standard stuff on tape
-            self.chars: list[Char] = ['S', '_']
-        else:
-            # convert char list to str
-            if type(machine_input) == list[Char]:
-                machine_input = chars_to_str(machine_input)
-            # put input on tape in between and initialize head and state
-            self.chars = str_to_chars(f"S{machine_input}_")
-        self.head = 1
-
-    def read(self) -> Char:
-        return self.chars[self.head]
-
-    def write(self, char: Char):
-        # that should not happen, but it will if your turing machine is weird
-        if self.read() == 'S' and char != 'S':
-            raise RuntimeError("Start symbol can't be overwritten.")
-        self.chars[self.head] = char
-
-    def move(self, direction: Directions):
-        if direction == Directions.L:
-            self.head -= 1
-        elif direction == Directions.R:
-            self.head += 1
-        # expand tape if necessary (we don't actually have infinite memory)
-        if self.head >= len(self.chars):
-            self.chars.append('_')
-        # that should not happen, but it will if your turing machine is weird
-        if self.head < 0:
-            raise IndexError("Head can't go to the left of the start of the tape.")
-
-    def __repr__(self) -> str:
-        # S11101_
-        #   ^
-        return f"{chars_to_str(self.chars)}\n{' ' * self.head}^"
-
-
-class ScrollableDisplay:
-    def __init__(self, window: Window) -> None:
-        self.window = window
-        self.display_str = ""
-        self.pos = 0
-
-    def add(self, string: str):
-        self.display_str += string
-
-    def clear(self):
-        self.display_str = ""
-
-    def scroll(self, n_lines: int):
-        self.pos += n_lines
-        self.pos = max(self.pos, 0)
-        self.pos = min(self.pos, self.display_str.count(os.linesep))
-        self.update()
-
-    def update(self):
-        max_rows, _ = self.window.getmaxyx()
-        lines = self.display_str.splitlines()
-        display_end = min(self.pos + max_rows, len(lines))
-        displayed_lines = lines[self.pos:display_end]
-        window_str = "\n".join(displayed_lines)
-        self.window.clear()
-        self.window.addstr(window_str)
 
 
 class TuringMachine:
@@ -346,7 +115,7 @@ class TuringMachine:
 
     def runtime(self, input: str | list[Char]) -> int:
         """Runs the TM on the input and returns the number of steps needed to reach the final state."""
-        
+
         self.run(input)
         return self.time
 
@@ -453,61 +222,6 @@ class TuringMachine:
         return TuringMachine(fun.n_states, fun.n_tapes, fun, logging, show_transitions)
 
 
-def test():
-    """Tests my implementation."""
-
-    assert EndStates.ACCEPT != 'y'
-    assert EndStates.ACCEPT == EndStates('y')
-    assert EndStates.ACCEPT in EndStates
-
-    state: int | EndStates = 0
-    assert type(state) == int
-    state = EndStates.ACCEPT
-    assert type(state) == EndStates
-
-    fun: TransitionFunction = TransitionFunction.from_file("tm4.txt")
-    assert fun.get(0, ['0']) == (0, [('1', Directions.R)])
-
-    tm5: TuringMachine = TuringMachine.from_file("tm5.txt")
-    assert tm5.result("0100$1101") == "1001"
-
-    # test Turing Machines that were part of the task
-    # tm_task1 should accept 0^n 1^n 0^n
-    tm_task1: TuringMachine = TuringMachine.from_file("task1.txt")
-    for n in range(20):
-        # 010
-        word = "0" * n + "1" * n + "0" * n
-        assert tm_task1.accepts(word), f"Task 1 failed: {word} not accepted."
-        # 0100, 0110, 0010
-        word = "0" * n + "1" * n + "0" * (n + 1)
-        assert tm_task1.rejects(word), f"Task 1 failed: {word} not rejected."
-        word = "0" * n + "1" * (n + 1) + "0" * n
-        assert tm_task1.rejects(word), f"Task 1 failed: {word} not rejected."
-        word = "0" * (n + 1) + "1" * n + "0" * n
-        assert tm_task1.rejects(word), f"Task 1 failed: {word} not rejected."
-        # 01100, 00100, 00110
-        word = "0" * n + "1" * (n + 1) + "0" * (n + 1)
-        assert tm_task1.rejects(word), f"Task 1 failed: {word} not rejected."
-        word = "0" * (n + 1) + "1" * n + "0" * (n + 1)
-        assert tm_task1.rejects(word), f"Task 1 failed: {word} not rejected."
-        word = "0" * (n + 1) + "1" * (n + 1) + "0" * n
-        assert tm_task1.rejects(word), f"Task 1 failed: {word} not rejected."
-    # tm_task2 should add 2 binary numbers
-    tm_task2a: TuringMachine = TuringMachine.from_file("task2a.txt")
-    tm_task2b: TuringMachine = TuringMachine.from_file("task2b.txt")
-    n_numbers_tested = 20
-    for x in range(n_numbers_tested):
-        for y in range(n_numbers_tested):
-            word = f"{bin(x)[2:]}${bin(y)[2:]}"
-            expected_result = bin(x + y)[2:]
-            result_2a = tm_task2a.result(word)
-            assert result_2a == expected_result, f"Task 2a failed: input = {word}, result = {result_2a}, expected = {expected_result}"
-            result_2b = tm_task2b.result(word)
-            assert result_2b == expected_result, f"Task 2b failed: input = {word}, result = {result_2b}, expected = {expected_result}"
-
-    print("all tests passed.")
-
-
 class test_action(argparse.Action):
     """This class is for the test flag."""
 
@@ -516,7 +230,7 @@ class test_action(argparse.Action):
 
     def __call__(self, parser, namespace, values, option_string, **kwargs):
         # if testing flag was set, ignore everything else and just test
-        test()
+        test.test_implementation()
         parser.exit()
 
 
@@ -538,12 +252,12 @@ def main():
     parser.add_argument("-s", "--showtransitions",
                         action='store_true',
                         help="Shows the transition table with the animation or log (logging must be enabled for the latter).")
-    parser.add_argument("--time",
+    parser.add_argument("-t", "--time",
                         action='store_true',
                         help="Shows runtime of the Turing Machine.")
-    parser.add_argument("-t", "--test",
+    parser.add_argument("--test",
                         action=test_action,
-                        help="Tests the implementation and the Turing Machines that were part of the task.")
+                        help="Tests the implementation and the Turing Machines that were part of the task (no other arguments needed).")
     args = parser.parse_args()
 
     # read turing machine
@@ -560,10 +274,10 @@ def main():
         tm.animate(tm_input)
     else:
         tm.run(tm_input)
-        print(tm.output())
+        print(f"Result: {tm.output()}")
         # maybe print time as well
         if args.time:
-            print(f"time: {tm.time}")
+            print(f"Time: {tm.time}")
 
 
 if __name__ == "__main__":
