@@ -1,8 +1,7 @@
 import argparse
-import os
-from pathlib import Path
 import numpy as np
 from typing import Self
+from pathlib import Path
 import matplotlib.pyplot as plt
 
 from tm import TuringMachine
@@ -131,7 +130,7 @@ def main():
     if args.save:
         # "task1.txt -> time_task1.png"
         basename = Path(args.tm).stem
-        plt.savefig(f"time_{basename}.png")
+        plt.savefig(f"plots/time_{basename}.png")
     else:
         plt.show()
 

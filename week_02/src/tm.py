@@ -182,6 +182,8 @@ class TransitionFunction:
 
 
 class Tape:
+    """Represents 1 tape of a Turing Machine."""
+    
     def __init__(self, machine_input: str | list[Char] = None) -> None:
         if machine_input is None:
             # write standard stuff on tape
@@ -245,9 +247,6 @@ class ScrollableDisplay:
         display_end = min(self.pos + max_rows, len(lines))
         displayed_lines = lines[self.pos:display_end]
         window_str = "\n".join(displayed_lines)
-        print(lines)
-        print(max_rows)
-        print(display_end)
         self.window.clear()
         self.window.addstr(window_str)
 
@@ -538,7 +537,7 @@ def main():
                         help="Logs the snapshots of the Turing Machine.")
     parser.add_argument("-s", "--showtransitions",
                         action='store_true',
-                        help="Shows the transition table with the animation or log.")
+                        help="Shows the transition table with the animation or log (logging must be enabled for the latter).")
     parser.add_argument("--time",
                         action='store_true',
                         help="Shows runtime of the Turing Machine.")

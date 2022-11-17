@@ -13,13 +13,13 @@ def main():
         inputs_task1.append("0" * n + "1" * (n + 1) + "0" * (n + 1))
         inputs_task1.append("0" * (n + 1) + "1" * n + "0" * (n + 1))
         inputs_task1.append("0" * (n + 1) + "1" * (n + 1) + "0" * n)
-    with open("inputs_task1.txt", 'w') as f:
+    with open("inputs/inputs_task1.txt", 'w') as f:
         f.write("\n".join(inputs_task1))
 
     # cool inputs for task 2
     max_n_task2 = 64
     inputs_task2 = [f"{bin(x)[2:]}${bin(y)[2:]}" for x in range(max_n_task2) for y in range(max_n_task2)]
-    with open("inputs_task2.txt", 'w') as f:
+    with open("inputs/inputs_task2.txt", 'w') as f:
         f.write("\n".join(inputs_task2))
 
 
