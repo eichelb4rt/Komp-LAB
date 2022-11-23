@@ -1,0 +1,6 @@
+# This Turing Machine was saved automatically from a Transition Function.
+1 2 2 3
+0,1
+0,0,_,0,0,R,0,R
+0,1,_,0,1,R,1,R
+0,_,_,h,_,N,_,N

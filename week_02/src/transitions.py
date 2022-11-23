@@ -64,16 +64,16 @@ class TransitionFunction:
         self.n_states = n_states
         self.n_tapes = n_tapes
         self.alphabet = alphabet
-        self.__transitions: dict[TransitionIn, TransitionOut] = {}
+        self._transitions: dict[TransitionIn, TransitionOut] = {}
 
     def get(self, state: int, chars: list[Char]) -> TransitionOut:
         # if we didn't specify this combination, we reject
         trans_in: TransitionIn = (state, chars)
         key = to_key(trans_in)
-        if key not in self.__transitions:
+        if key not in self._transitions:
             return (EndStates.REJECT, zip(chars, [Directions.N] * self.n_tapes))
         # otherwise just return the matching transition
-        return self.__transitions[key]
+        return self._transitions[key]
 
     def __repr__(self) -> str:
         return tabulate([[
@@ -87,21 +87,21 @@ class TransitionFunction:
             ",".join(char_out for char_out, _ in trans_out[1]),
             # directions out
             ",".join(direction_out.value for _, direction_out in trans_out[1])
-        ] for trans_in, trans_out in self.__transitions.items()],
+        ] for trans_in, trans_out in self._transitions.items()],
             headers=["state in", "chars in", "state out", "chars out", "directions"],
             colalign=["center"] * 5,
             tablefmt='simple_grid')
 
     def _add(self, input: TransitionIn, output: TransitionOut):
-        self.__transitions[to_key(input)] = output
+        self._transitions[to_key(input)] = output
 
     def save(self, filename: str):
         """Saves the encoded transition function to a file."""
 
         comment = "# This Turing Machine was saved automatically from a Transition Function."
-        firstline = f"{self.n_states} {self.n_tapes} {len(self.alphabet)} {len(self.__transitions)}"
+        firstline = f"{self.n_states} {self.n_tapes} {len(self.alphabet)} {len(self._transitions)}"
         secondline = ",".join(self.alphabet)
-        transitions_lines = [transition_to_str(t_in, t_out) for t_in, t_out in self.__transitions.items()]
+        transitions_lines = [transition_to_str(t_in, t_out) for t_in, t_out in self._transitions.items()]
         encoded = os.linesep.join([comment, firstline, secondline] + transitions_lines)
         with open(filename, 'w') as f:
             f.write(encoded)
