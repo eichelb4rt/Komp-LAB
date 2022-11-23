@@ -47,18 +47,6 @@ MovingStageInfo = tuple[int | EndStates, tuple[Directions], tuple[bool]]
 ################################################################
 
 
-def extract_states(trans_fun: TransitionFunction) -> set[int | EndStates]:
-    """Extracts all states from a transition function."""
-
-    states: set[int | EndStates] = set()
-    for t_in, t_out in trans_fun._transitions.items():
-        state_in, chars_in = t_in
-        state_out, chars_and_dirs_out = t_out
-        states.add(state_in)
-        states.add(state_out)
-    return states
-
-
 def extract_moves(trans_fun: TransitionFunction) -> set[MoveInfo]:
     """Extracts all possible (state, directions)-vectors from the transition function."""
 
@@ -252,7 +240,7 @@ def compress_states_moving(possible_moves: set[MoveInfo], going: Directions, sta
 ################################################################
 
 
-def header_clashes(char_in: Char, saved_chars: str, n_tapes: int) -> bool:
+def header_clash(char_in: Char, saved_chars: str, n_tapes: int) -> bool:
     """Returns `True` if we already saved a char on some tape, but then found another header."""
 
     for i in range(n_tapes):
@@ -283,6 +271,53 @@ def build_transition(state_in: int, char_in: Char, state_out: int | EndStates, c
     return t_in, t_out
 
 
+def build_transitions_stage_one(compressed_alphabet: list[Char], compressed_states_map_reading: bidict[ReadingStageInfo, int], n_tapes: int) -> list[tuple[TransitionIn, TransitionOut]]:
+    compressed_transitions: list[tuple[TransitionIn, TransitionOut]] = []
+    # we're in "compressed" state 0:
+    # we haven't read anything yet. no matter what is on the tapes, go into the state where nothing is read yet.
+    for char_in in compressed_alphabet:
+        # go into compressed state:
+        # original state is 0 and we haven't saved anything
+        state_out = compressed_states_map_reading[0, ' ' * n_tapes]
+        # add it to the list
+        # don't write anything, don't move anything
+        compressed_transitions.append(build_transition(
+            state_in=0,
+            char_in=char_in,
+            state_out=state_out,
+            char_out=char_in,
+            direction=Directions.N
+        ))
+
+    # now add transitions for reading chars if there's the header there
+    incomplete_saves = compressed_states_map_reading.keys()
+    # we observe some chars
+    for char_in in compressed_alphabet:
+        # and we already saved these chars
+        for original_state_in, old_save in incomplete_saves:
+            # the header can only be at one position at the same time, so the following situation can't occur:
+            # we observe a header and there's already a char read at that position
+            # so we can just skip these cases
+            if header_clash(char_in, old_save, n_tapes):
+                continue
+            # figure out which chars to save
+            new_save = save_new_chars(char_in, old_save, n_tapes)
+            compressed_state_in = compressed_states_map_reading[original_state_in, old_save]
+            compressed_state_out = compressed_states_map_reading[original_state_in, new_save]
+            # construct transition
+            # no matter what state we're in, just keep it. we're just reading.
+            # connect old save to new save
+            # don't write anything, go right
+            compressed_transitions.append(build_transition(
+                state_in=compressed_state_in,
+                char_in=char_in,
+                state_out=compressed_state_out,
+                char_out=char_in,
+                direction=Directions.R
+            ))
+    return compressed_transitions
+
+
 ################################################################
 # PRETTY MUCH MAIN
 ################################################################
@@ -292,18 +327,12 @@ def compress(original_function: TransitionFunction) -> TransitionFunction:
     """Compresses a k-tape transition function into a 1-tape transition function."""
 
     n_tapes = original_function.n_tapes
-    # alphabets
     original_input_alphabet = original_function.alphabet
-    original_working_alphabet = original_function.alphabet + SPECIAL_CHARS
     # extract info from the original function
-    original_states = extract_states(original_function)
     original_trans_ins = extract_trans_ins(original_function)
     original_trans_outs = extract_trans_outs(original_function)
     # all of the possible directions we can go (where the headers are moved)
     original_moves = extract_moves(original_function)
-
-    # NOTE: in the reading stage, ' ' is used for tapes where the char hasn't been encountered yet.
-    # NOTE: in the writing stage, ' ' isn't needed because we don't care if a char has already been written or not.
 
     # start compressing
     compressed_alphabet = compress_alphabet(original_input_alphabet, n_tapes)
@@ -328,50 +357,11 @@ def compress(original_function: TransitionFunction) -> TransitionFunction:
     print("STATES MOVING LEFT")
     print(compressed_states_map_moving_left)
 
-    # TODO: add states for what we can write on the tapes
-    # TODO: need to add the direction we're going
+    # start building the transitions
+    compressed_transitions: list[tuple[TransitionIn, TransitionOut]] = []
+    compressed_transitions += build_transitions_stage_one(compressed_alphabet, compressed_states_map_reading, n_tapes)
 
-    # # start building the transitions
-    # compressed_transitions: list[tuple[TransitionIn, TransitionOut]] = []
-
-    # # add transitions for step 1:
-    # # we're in "compressed" state 0:
-    # # we haven't read anything yet. no matter what is on the tapes, go into the state where nothing is read yet.
-    # for char_in in compressed_alphabet:
-    #     state_in = 0
-    #     # go into compressed state:
-    #     # original state is 0 and we haven't saved anything
-    #     state_out = compressed_states_map[0, ' ' * original_function.n_tapes]
-    #     # don't write anything
-    #     char_out = char_in
-    #     # don't move anything
-    #     direction = Directions.N
-    #     # add it to the list
-    #     compressed_transitions.append(build_transition(state_in, char_in, state_out, char_out, direction))
-
-    # # now add transitions for reading chars if there's the header there
-    # possible_saves = compressed_states_map.keys()
-    # # we observe some chars
-    # for char_in in compressed_alphabet:
-    #     # and we already saved these chars
-    #     for old_saved_chars in possible_saves:
-    #         # the header can only be at one position at the same time, so the following situation can't occur:
-    #         # we observe a header and there's already a char read at that position
-    #         # so we can just skip these cases
-    #         if header_clashes(char_in, old_saved_chars, original_function.n_tapes):
-    #             continue
-    #         # figure out which chars to save
-    #         new_saved_chars = save_new_chars(char_in, old_saved_chars, original_function.n_tapes)
-    #         # construct transition
-    #         # we're in some state
-    #         for original_state in original_states:
-    #             # no matter what original state we're in, just keep it.
-    #             state_in = compressed_states_map[original_state, old_saved_chars]
-    #             state_out = compressed_states_map[original_state, new_saved_chars]
-    #             # don't write anything, go to the next char
-    #             char_out = char_in
-    #             direction = Directions.R
-    #             compressed_transitions.append(build_transition(state_in, char_in, state_out, char_out, direction))
+    # add transitions for step 1:
 
     # step 2: if we found the end of the tape, convert the current state and the saved chars to the desired output
     # this is where the actual work of the original Turing Machine is done
