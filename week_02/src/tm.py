@@ -2,12 +2,12 @@ import os
 import curses
 import argparse
 from enum import Enum
-from typing import Self
+from typing import Generic, Self, Type, TypeVar
 
 import test
-from tape import Tape
+from tape import MultiCharTape, SingleCharTape, Tape
 from display import ScrollableDisplay, Window
-from transitions import TransitionFunction, EndStates, Char, Directions, is_endstate, chars_to_str, str_to_chars
+from transitions import TransitionFunction, EndStates, Char, Directions, is_endstate
 
 
 class AnimationDirections(Enum):
@@ -21,16 +21,19 @@ ANIMATION_DIRECTION_STRINGS = [state.value for state in AnimationDirections]
 
 
 class TuringMachine:
-    def __init__(self, n_states: int, n_tapes: int, transition_function: TransitionFunction, logging=False, show_transitions=False) -> None:
+    def __init__(self, n_states: int, n_tapes: int, transition_function: TransitionFunction, logging=False, show_transitions=False, tape_cls: Type[Tape] = SingleCharTape) -> None:
         # TODO: do sth with this? (i'm not using n_states anywhere)
         self.n_states = n_states
         self.n_tapes = n_tapes
         self.transition_function = transition_function
         self.logging = logging
         self.show_transitions = show_transitions
-        self.tapes: list[Tape] = [Tape()] * n_tapes
-        self.state: int | EndStates = 0
-        self.time: int = 0
+        # tape can be of different sub classes
+        self.tape_cls = tape_cls
+        # initialized when TM is run
+        self.tapes: list[Tape]
+        self.state: int | EndStates
+        self.time: int
 
     def __read(self) -> list[Char]:
         return [tape.read() for tape in self.tapes]
@@ -66,9 +69,9 @@ class TuringMachine:
         self.state = 0
         self.time = 0
         # init tapes
-        self.tapes = [Tape() for _ in range(self.n_tapes)]
+        self.tapes = [self.tape_cls() for _ in range(self.n_tapes)]
         # first tape is input tape
-        self.tapes[0] = Tape(input)
+        self.tapes[0] = self.tape_cls(input)
         # log starting state
         if self.logging:
             print(self)
@@ -85,11 +88,7 @@ class TuringMachine:
 
         if self.state != EndStates.HALT:
             return self.state
-        result = chars_to_str(self.tapes[-1].chars)
-        # remove trailing blanks: convert '_' to whitespace, remove whitespace on the right, convert whitespace back to '_'
-        result = result.replace("_", " ").rstrip().replace(" ", "_")
-        # return everything but the start symbol
-        return result[1:]
+        return self.tapes[-1].output()
 
     ################################################################
     # all of these four (4) functions run the turing machine
@@ -129,9 +128,9 @@ class TuringMachine:
         self.state = 0
         self.time = 0
         # init tapes
-        self.tapes = [Tape() for _ in range(self.n_tapes)]
+        self.tapes = [self.tape_cls() for _ in range(self.n_tapes)]
         # first tape is input tape
-        self.tapes[0] = Tape(input)
+        self.tapes[0] = self.tape_cls(input)
 
         # animation stuff
         # snapshots of the TM at any given time (just string representations)
@@ -217,9 +216,9 @@ class TuringMachine:
         return f"time: {self.time},\tstate: {self.state}\ntapes:\n{tape_strings}"
 
     @classmethod
-    def from_file(cls, filename: str, logging=False, show_transitions=False) -> Self:
+    def from_file(cls, filename: str, **kwargs) -> Self:
         fun: TransitionFunction = TransitionFunction.from_file(filename)
-        return TuringMachine(fun.n_states, fun.n_tapes, fun, logging, show_transitions)
+        return TuringMachine(fun.n_states, fun.n_tapes, fun, **kwargs)
 
 
 class test_action(argparse.Action):
@@ -255,13 +254,21 @@ def main():
     parser.add_argument("-t", "--time",
                         action='store_true',
                         help="Shows runtime of the Turing Machine.")
+    parser.add_argument("-m", "--multichars",
+                        action='store_true',
+                        help="Enable ability to have multiple chars in one tape cell.")
     parser.add_argument("--test",
                         action=test_action,
                         help="Tests the implementation and the Turing Machines that were part of the task (no other arguments needed).")
     args = parser.parse_args()
 
+    # find out which kind of tape we are using
+    if args.multichars:
+        tape_cls = MultiCharTape
+    else:
+        tape_cls = SingleCharTape
     # read turing machine
-    tm: TuringMachine = TuringMachine.from_file(args.filename, args.logging, args.showtransitions)
+    tm: TuringMachine = TuringMachine.from_file(args.filename, logging=args.logging, show_transitions=args.showtransitions, tape_cls=tape_cls)
     # read machine input
     if args.fileinput:
         with open(args.input, 'r') as f:

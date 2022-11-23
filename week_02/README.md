@@ -7,7 +7,7 @@
 ### Usage
 
 ```text
-usage: tm.py [-h] [-i] [-a] [-l] [-s] [--time] [-t] filename input
+usage: tm.py [-h] [-i] [-a] [-l] [-s] [-t] [-m] [--test] filename input
 
 Runs a Turing Machine on an input text.
 
@@ -22,8 +22,10 @@ options:
   -l, --logging         Logs the snapshots of the Turing Machine.
   -s, --showtransitions
                         Shows the transition table with the animation or log (logging must be enabled for the latter).
-  --time                Shows runtime of the Turing Machine.
-  -t, --test            Tests the implementation and the Turing Machines that were part of the task.
+  -t, --time            Shows runtime of the Turing Machine.
+  -m, --multichars      Enable ability to have multiple chars in one tape cell.
+  --test                Tests the implementation and the Turing Machines that were part of the task (no other
+                        arguments needed).
 ```
 
 ### Examples
@@ -32,6 +34,7 @@ options:
 python src/tm.py machines/tm5.txt -i inputs/input.txt -t
 python src/tm.py machines/task1.txt "000111000" --animate
 python src/tm.py machines/task2a.txt "1101\$1011" -s -l
+python src/tm.py machines/multichars.txt "11|0|11|0|0" -m --animate
 ```
 
 ## Approximate Runtime

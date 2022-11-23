@@ -4,6 +4,7 @@ from enum import Enum
 from typing import Self
 from io import TextIOWrapper
 from tabulate import tabulate
+from chars import Char
 
 
 class EndStates(Enum):
@@ -24,20 +25,10 @@ class Directions(Enum):
 SPECIAL_CHARS = ['S', '_']
 
 
-# just to not confuse elements of the alphabet with actual strings
-Char = str
 # input to transition function: state and character
 TransitionIn = tuple[int, list[Char]]
 # output of transtion function: state (+ end states), character (only writeable ones), direction
 TransitionOut = tuple[int | EndStates, list[tuple[Char, Directions]]]
-
-
-def str_to_chars(string: str) -> list[Char]:
-    return [c for c in string]
-
-
-def chars_to_str(chars: list[Char]):
-    return "".join(chars)
 
 
 def is_endstate(state: int | EndStates):

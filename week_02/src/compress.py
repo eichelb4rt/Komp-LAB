@@ -6,6 +6,14 @@ from transitions import TransitionFunction
 def compress(original: TransitionFunction) -> TransitionFunction:
     """Compresses a k-tape transition function into a 1-tape transition function."""
     
+    # plan:
+    # 1 step:
+    # from left to right, collect what chars we see
+    # when on the right, figure out what stuff to write
+    # go back (left), write it
+    # go right, move some heads to the right,
+    # go left, move some heads to the left
+    
     # states that i need: 
     # - originial states
     # - 1 state for every combination of chars
@@ -23,7 +31,7 @@ def main():
 
     # load tm
     trans_fun = TransitionFunction.from_file(args.tm)
-    out_file = f"{Path(args.tm).stem}_compressed.txt"
+    out_file = f"machines/{Path(args.tm).stem}_compressed.txt"
     print("Saving transtition function.")
     trans_fun.save(out_file)
     print("Transition function saved.")
