@@ -201,14 +201,15 @@ def generate_incomplete_saves(original_trans_in: list[TransitionIn], n_tapes: in
 ################################################################
 
 
-def compress_states_copying(original_alphabet: list[Char], start_at=2) -> bidict[Char, int]:
-    """Builds states for stage 0. In stage 0, we have to remember the last char on the tape. That's one state for every char."""
+def compress_states_copying(original_alphabet: list[Char], start_at=2) -> bidict[tuple[Char, bool], int]:
+    """Builds states for stage 0. In stage 0, we have to remember the last char on the tape. We also have to remember if we already wrote the first char or not (to place the heads). That's two states for every char."""
     
-    compressed_states_map: bidict[Char, int] = bidict()
+    compressed_states_map: bidict[tuple[Char, bool], int] = bidict()
     next_state = start_at
     for char in original_alphabet:
-        compressed_states_map[char] = next_state
-        next_state += 1
+        for placed_first in [True, False]:
+            compressed_states_map[char, placed_first] = next_state
+            next_state += 1
     return compressed_states_map, next_state
 
 
@@ -292,12 +293,14 @@ def build_transition(state_in: int, char_in: Char, state_out: int | EndStates, c
 def build_transitions_stage_zero(original_alphabet: list[Char], compressed_states_map_copying: bidict[Char, int], n_tapes: int) -> list[tuple[TransitionIn, TransitionOut]]:
     compressed_transitions: list[tuple[TransitionIn, TransitionOut]] = []
     
-    # add an artificial start symbol (*S*S*S)
-    compressed_start_char = "*S" * n_tapes
+    # TODO: empty inputs don't work yet
+    
+    # add an artificial start symbol (-S-S-S)
+    compressed_start_char = "-S" * n_tapes
     # whatever char there is on the first cell, remember it and put the artificial start symbol there
     for replaced_char in original_alphabet:
-        # remember the replaced char in a state
-        state_out = compressed_states_map_copying[replaced_char]
+        # remember the replaced char in a state, remember that we haven't placed the first char yet
+        state_out = compressed_states_map_copying[replaced_char, False]
         # replace it with the atificial start symbol and go right
         compressed_transitions.append(build_transition(
             state_in=0,
@@ -306,16 +309,39 @@ def build_transitions_stage_zero(original_alphabet: list[Char], compressed_state
             char_out=compressed_start_char,
             direction=Directions.R
         ))
-        
-    # now shift all the chars 1 to the right
+    
+    # first cell needs to have heads everywhere
+    init_multichar_with_heads = lambda original_char: '*' + original_char + '*_' * (n_tapes - 1)
+    # no heads here, just copy original char and fill rest with blank
+    init_multichar_without_heads = lambda original_char: '-' + original_char + '-_' * (n_tapes - 1)
+    
+    # now shift the first char 1 to the right
+    for second_char in original_alphabet:
+        for first_char in original_alphabet:
+            # we remembered the 1st char, but didn't place it yet
+            state_in = compressed_states_map_copying[first_char, False]
+            # remember the replaced char in a state (we placed the 1st char by then)
+            state_out = compressed_states_map_copying[second_char, True]
+            # we can just write the compressed char immediately
+            compressed_char = init_multichar_with_heads(first_char)
+            # replace it with the last remembered char and go next
+            compressed_transitions.append(build_transition(
+                state_in=state_in,
+                char_in=second_char,
+                state_out=state_out,
+                char_out=compressed_char,
+                direction=Directions.R
+            ))
+    
+    # now shift all the rest 1 to the right
     for replaced_char in original_alphabet:
         for prev_char in original_alphabet:
             # we remembered the previous char
-            state_in = compressed_states_map_copying[prev_char]
+            state_in = compressed_states_map_copying[prev_char, True]
             # remember the replaced char in a state
-            state_out = compressed_states_map_copying[replaced_char]
+            state_out = compressed_states_map_copying[replaced_char, True]
             # we can just write the compressed char immediately
-            compressed_char = prev_char + '_' * (n_tapes - 1)
+            compressed_char = init_multichar_without_heads(prev_char)
             # replace it with the last remembered char and go next
             compressed_transitions.append(build_transition(
                 state_in=state_in,
@@ -327,28 +353,31 @@ def build_transitions_stage_zero(original_alphabet: list[Char], compressed_state
     
     # if we find the end / blank ('_'), write down the last char and go back
     for last_char in original_alphabet:
-        # we remembered the previous char
-        state_in = compressed_states_map_copying[prev_char]
-        # we can just write the compressed char immediately
-        compressed_char = last_char + '_' * (n_tapes - 1)
-        compressed_transitions.append(build_transition(
-            state_in=state_in,
-            char_in=original_char,
-            state_out=1,
-            char_out=compressed_char,
-            direction=Directions.L
-        ))
+        # doesn't matter if we placed the first char already or not
+        for placed_first in [True, False]:
+            # we remembered the previous char
+            state_in = compressed_states_map_copying[last_char, placed_first]
+            # we can just write the compressed char immediately
+            compressed_char = init_multichar_without_heads(last_char) if placed_first else init_multichar_with_heads(last_char)
+            compressed_transitions.append(build_transition(
+                state_in=state_in,
+                char_in='_',
+                state_out=1,
+                char_out=compressed_char,
+                direction=Directions.L
+            ))
         
     # now go back, doesn't matter what's on the tape
     for original_char in original_alphabet:
-        compressed_char = original_char + '_' * (n_tapes - 1)
-        compressed_transitions.append(build_transition(
-            state_in=1,
-            char_in=compressed_char,
-            state_out=1,
-            char_out=compressed_char,
-            direction=Directions.L
-        ))
+        for placed_first in [True, False]:
+            compressed_char = init_multichar_without_heads(original_char) if placed_first else init_multichar_with_heads(original_char)
+            compressed_transitions.append(build_transition(
+                state_in=1,
+                char_in=compressed_char,
+                state_out=1,
+                char_out=compressed_char,
+                direction=Directions.L
+            ))
     
     # if we find the artificial start symbol again, go into the ready state
     compressed_transitions.append(build_transition(
@@ -620,26 +649,23 @@ def compress(original_function: TransitionFunction) -> TransitionFunction:
 
     # start building the transitions
     compressed_transitions: list[tuple[TransitionIn, TransitionOut]] = []
-    compressed_transitions += build_transitions_stage_zero(compressed_alphabet, compressed_states_map_copying, n_tapes)
+    compressed_transitions += build_transitions_stage_zero(original_input_alphabet, compressed_states_map_copying, n_tapes)
     compressed_transitions += build_transitions_stage_zero_to_one(compressed_alphabet, compressed_states_map_reading, n_tapes)
     compressed_transitions += build_transitions_stage_one(compressed_alphabet, compressed_states_map_reading, n_tapes)
     compressed_transitions += build_transitions_stage_one_to_two(original_function, compressed_states_map_reading, compressed_states_map_writing, n_tapes)
     compressed_transitions += build_transitions_stage_two(compressed_non_start_alphabet, compressed_states_map_writing, n_tapes)
     compressed_transitions += build_transitions_stage_two_to_three(compressed_start_alphabet, compressed_states_map_writing, compressed_states_map_moving_right, n_tapes)
 
-    # add transitions for step 1:
 
-    # step 2: if we found the end of the tape, convert the current state and the saved chars to the desired output
-    # this is where the actual work of the original Turing Machine is done
-
-    # we read all tapes so every tape must have a saved char
+    # DEBUG
+    # print(build_transitions_stage_one(compressed_alphabet, compressed_states_map_reading, n_tapes))
 
     # TODO: if original goes into q_h, clean up all the stuff and write down the output
     # TODO: ask if we also need to do this
     # build transition function
     # we might not use all the states we created
     n_states = len(extract_states(compressed_transitions))
-    compressed_function = TransitionFunction(n_states, 1, compressed_alphabet)
+    compressed_function = TransitionFunction(n_states, 1, original_input_alphabet + compressed_alphabet)
     for trans_in, trans_out in compressed_transitions:
         compressed_function._add(trans_in, trans_out)
     return compressed_function
