@@ -98,18 +98,6 @@ def extract_states(transitions: list[tuple[TransitionIn, TransitionOut]]) -> set
 ################################################################
 
 
-def directions_apply_found(directions: tuple[Directions], found_vector: tuple[bool]) -> tuple[Directions]:
-    """Replaces the directions where we found the headers with `Directions.N`."""
-
-    # make it mutable
-    new_directions = list(directions)
-    for tape_index, found_header in enumerate(found_vector):
-        if found_header:
-            new_directions[tape_index] = Directions.N
-    # make it immutable again
-    return tuple(new_directions)
-
-
 def possible_found_vectors(directions: tuple[Directions], going: Directions) -> list[tuple[bool]]:
     """Returns the possibilities in which the headers in the direction we're going can be found.
 
@@ -129,25 +117,15 @@ def generate_possible_moves(original_moves: set[MoveInfo]) -> tuple[set[MoveInfo
     Example: [0, LRLNR] -> [(0, LRLNR), (0, LRLNN), (0, LNNLNR), (0, LNLNN)], [(0, LNLNN), (0, LNNNN), (0, NNLNN), (0, NNNNN)]"""
 
     # first compute all the possible ways the headers can be found going right
-    possibilities_right: set[MoveInfo] = set()
-    for state_out, directions in original_moves:
-        # add possibilities for if we found them or not
-        # this only needs to be done for headers we want to move to the right, we don't care about left here (we just set them to False)
-        found_vectors = possible_found_vectors(directions, going=Directions.R)
-        for found_vector in found_vectors:
-            new_directions = directions_apply_found(directions, found_vector)
-            possibilities_right.add((state_out, new_directions))
+    possibilities_right: set[MoveInfo] = original_moves
 
     # now computer all ways the headers can be found going left
     # note that we already found all the headers that have to be moved right
     possibilities_left: set[tuple[Directions]] = set()
     for state_out, directions in original_moves:
         # we found every Directions.R
-        new_directions = directions_apply_found(directions, [direction == Directions.R for direction in directions])
-        found_vectors = possible_found_vectors(new_directions, going=Directions.L)
-        for found_vector in found_vectors:
-            new_directions = directions_apply_found(new_directions, found_vector)
-            possibilities_left.add((state_out, new_directions))
+        new_directions = tuple([Directions.N if direction == Directions.R else direction for direction in directions])
+        possibilities_left.add((state_out, new_directions))
 
     return possibilities_right, possibilities_left
 
@@ -159,7 +137,7 @@ def generate_possible_moves(original_moves: set[MoveInfo]) -> tuple[set[MoveInfo
 
 def compress_alphabet(original_input_alphabet: list[Char], n_tapes: int) -> list[Char]:
     """Compresses all possible combinations of headers and chars into one compressed char each.
-    
+
     Returns a list of compressed start chars and a list of compressed non-start chars."""
 
     # first add all the possible combinations of chars without the start symbol ('S')
@@ -203,7 +181,7 @@ def generate_incomplete_saves(original_trans_in: list[TransitionIn], n_tapes: in
 
 def compress_states_copying(original_alphabet: list[Char], start_at=2) -> bidict[tuple[Char, bool], int]:
     """Builds states for stage 0. In stage 0, we have to remember the last char on the tape. We also have to remember if we already wrote the first char or not (to place the heads). That's two states for every char."""
-    
+
     compressed_states_map: bidict[tuple[Char, bool], int] = bidict()
     next_state = start_at
     for char in original_alphabet:
@@ -292,9 +270,9 @@ def build_transition(state_in: int, char_in: Char, state_out: int | EndStates, c
 
 def build_transitions_stage_zero(original_alphabet: list[Char], compressed_states_map_copying: bidict[Char, int], n_tapes: int) -> list[tuple[TransitionIn, TransitionOut]]:
     compressed_transitions: list[tuple[TransitionIn, TransitionOut]] = []
-    
+
     # TODO: empty inputs don't work yet
-    
+
     # add an artificial start symbol (-S-S-S)
     compressed_start_char = "-S" * n_tapes
     # whatever char there is on the first cell, remember it and put the artificial start symbol there
@@ -309,12 +287,12 @@ def build_transitions_stage_zero(original_alphabet: list[Char], compressed_state
             char_out=compressed_start_char,
             direction=Directions.R
         ))
-    
+
     # first cell needs to have heads everywhere
     init_multichar_with_heads = lambda original_char: '*' + original_char + '*_' * (n_tapes - 1)
     # no heads here, just copy original char and fill rest with blank
     init_multichar_without_heads = lambda original_char: '-' + original_char + '-_' * (n_tapes - 1)
-    
+
     # now shift the first char 1 to the right
     for second_char in original_alphabet:
         for first_char in original_alphabet:
@@ -332,7 +310,7 @@ def build_transitions_stage_zero(original_alphabet: list[Char], compressed_state
                 char_out=compressed_char,
                 direction=Directions.R
             ))
-    
+
     # now shift all the rest 1 to the right
     for replaced_char in original_alphabet:
         for prev_char in original_alphabet:
@@ -350,7 +328,7 @@ def build_transitions_stage_zero(original_alphabet: list[Char], compressed_state
                 char_out=compressed_char,
                 direction=Directions.R
             ))
-    
+
     # if we find the end / blank ('_'), write down the last char and go back
     for last_char in original_alphabet:
         # doesn't matter if we placed the first char already or not
@@ -366,7 +344,7 @@ def build_transitions_stage_zero(original_alphabet: list[Char], compressed_state
                 char_out=compressed_char,
                 direction=Directions.L
             ))
-        
+
     # now go back, doesn't matter what's on the tape
     for original_char in original_alphabet:
         for placed_first in [True, False]:
@@ -378,16 +356,16 @@ def build_transitions_stage_zero(original_alphabet: list[Char], compressed_state
                 char_out=compressed_char,
                 direction=Directions.L
             ))
-    
-    # if we find the artificial start symbol again, go into the ready state
+
+    # if we find the artificial start symbol again, go into the ready state and place header on the first real cell
     compressed_transitions.append(build_transition(
         state_in=1,
         char_in=compressed_start_char,
         state_out=READY_STATE,
         char_out=compressed_start_char,
-        direction=Directions.N
+        direction=Directions.R
     ))
-    
+
     return compressed_transitions
 
 
@@ -421,15 +399,15 @@ def build_transitions_stage_zero_to_one(compressed_alphabet: list[Char], compres
 ################################################################
 
 
-def header_clash(char_in: Char, saved_chars: str, n_tapes: int) -> bool:
+def head_clash_reading(char_in: Char, saved_chars: str, n_tapes: int) -> bool:
     """Returns `True` if we already saved a char on some tape, but then found another header."""
 
     for i in range(n_tapes):
-        # every 2nd char in `char_in` indicates if the header is there
-        header_found = char_in[2 * i] == '*'
+        # every 2nd char in `char_in` indicates if the head is there
+        head_found = char_in[2 * i] == '*'
         # if the char read at position `i` isn't empty, we already found a char for that tape
         char_found = saved_chars[i] != ' '
-        if header_found and char_found:
+        if head_found and char_found:
             return True
     return False
 
@@ -459,7 +437,7 @@ def build_transitions_stage_one(compressed_alphabet: list[Char], compressed_stat
             # the header can only be at one position at the same time, so the following situation can't occur:
             # we observe a header and there's already a char read at that position
             # so we can just skip these cases
-            if header_clash(char_in, old_save, n_tapes):
+            if head_clash_reading(char_in, old_save, n_tapes):
                 continue
             # figure out which chars to save
             new_save = save_new_chars(char_in, old_save, n_tapes)
@@ -594,10 +572,190 @@ def build_transitions_stage_two_to_three(compressed_start_alphabet: list[Char], 
                 direction=Directions.N
             ))
     return compressed_transitions
-        
+
+
+################################################################
+# STAGE 3
+################################################################
+
+
+def head_clash_moving(char_in: Char, found_directions: tuple[bool], n_tapes: int) -> bool:
+    """Returns `True` if we just found a char on some tape, but then found another header."""
+
+    for i in range(n_tapes):
+        # every 2nd char in `char_in` indicates if the head is there
+        head_found = char_in[2 * i] == '*'
+        if head_found and found_directions[i]:
+            return True
+    return False
+
+
+def pick_up_heads(compressed_char: Char, directions: tuple[Directions], n_tapes: int, desired_direction: Directions) -> tuple[Char, tuple[bool]]:
+    """Picks up the heads on each tape if we're moving into the desired direction on that tape.
+
+    Returns new compressed char without the picked up heads, also returns positions where the heads where picked up."""
+
+    heads_found = [compressed_char[2 * i] == '*' for i in range(n_tapes)]
+    # pickup heads that we found, but only if we're going into the desired direction
+    picked_up_heads = [heads_found[i] and directions[i] == desired_direction for i in range(n_tapes)]
+    # create a mutable representation
+    new_char = list(compressed_char)
+    for i in range(n_tapes):
+        # if the head on the i-th tape was picked up, remove it
+        if picked_up_heads[i]:
+            new_char[2 * i] = '-'
+    # make immutable again
+    return "".join(new_char), tuple(picked_up_heads)
+
+
+def drop_heads(compressed_char: Char, dropped_heads: tuple[bool], n_tapes: int) -> Char:
+    """Writes the heads we found in the previous cell to the current cell (because we want to move them)."""
+
+    # create mutable representation
+    new_char = list(compressed_char)
+    for i in range(n_tapes):
+        if dropped_heads[i]:
+            new_char[2 * i] = '*'
+    # make char immutable again
+    return "".join(new_char)
+
 
 def build_transitions_stage_three(compressed_alphabet: list[Char], compressed_states_map_moving_right: bidict[MovingStageInfo, int], n_tapes: int) -> list[tuple[TransitionIn, TransitionOut]]:
-    pass
+    compressed_transitions: list[tuple[TransitionIn, TransitionOut]] = []
+    moving_stage_infos: list[MovingStageInfo] = compressed_states_map_moving_right.keys()
+    # scenario: we found another compressed char and want to move the picked up heads
+    for compressed_char_in in compressed_alphabet:
+        for original_state, directions, dropped_heads in moving_stage_infos:
+            # we can't find a head immediately after we just found it
+            if head_clash_moving(compressed_char_in, dropped_heads, n_tapes):
+                continue
+            # save what heads we're finding on the tapes
+            picked_up_char, picked_up_heads = pick_up_heads(compressed_char_in, directions, n_tapes, desired_direction=Directions.R)
+            # write down the heads we just found in the previous cell
+            compressed_char_out = drop_heads(picked_up_char, dropped_heads, n_tapes)
+            # figure out states
+            compressed_state_in = compressed_states_map_moving_right[original_state, directions, dropped_heads]
+            compressed_state_out = compressed_states_map_moving_right[original_state, directions, picked_up_heads]
+            # build transition
+            # remember the heads we just picked up in the state
+            # change heads and go right
+            compressed_transitions.append(build_transition(
+                state_in=compressed_state_in,
+                char_in=compressed_char_in,
+                state_out=compressed_state_out,
+                char_out=compressed_char_out,
+                direction=Directions.R
+            ))
+    # scenario: we found a blank ('_') but still haven't moved all the heads -> expand tapes
+    no_heads = tuple([False] * n_tapes)
+    new_blanks = "-_" * n_tapes
+    for original_state, directions, dropped_heads in moving_stage_infos:
+        # we just consider cases where we actually have to move something (otherwise we don't need new blanks)
+        if dropped_heads == no_heads:
+            continue
+        # make a new blank symbol on every tape but with some heads
+        compressed_char_out = drop_heads(new_blanks, dropped_heads, n_tapes)
+        # figure out states
+        compressed_state_in = compressed_states_map_moving_right[original_state, directions, dropped_heads]
+        # we can't pick up any heads on a new blank
+        compressed_state_out = compressed_states_map_moving_right[original_state, directions, no_heads]
+        # build transition
+        # don't change the state
+        compressed_transitions.append(build_transition(
+            state_in=compressed_state_in,
+            char_in='_',
+            state_out=compressed_state_out,
+            char_out=compressed_char_out,
+            direction=Directions.R
+        ))
+    return compressed_transitions
+
+
+################################################################
+# STAGE 2 -> STAGE 3
+################################################################
+
+
+def build_transitions_stage_three_to_four(compressed_moves_going_right: set[MoveInfo], compressed_states_map_moving_right: bidict[MovingStageInfo, int], compressed_states_map_moving_left: bidict[MovingStageInfo, int], n_tapes: int) -> list[tuple[TransitionIn, TransitionOut]]:
+    compressed_transitions: list[tuple[TransitionIn, TransitionOut]] = []
+    no_heads = tuple([False] * n_tapes)
+    # we see a blank ('_') and we're done moving all the heads to the right. Let's forget about them and start moving heads to the left.
+    for original_state, old_directions in compressed_moves_going_right:
+        # replace all the Directions.R with Directions.N
+        new_directions = tuple([Directions.N if direction == Directions.R else direction for direction in old_directions])
+        # we already moved all the heads to the right
+        compressed_state_in = compressed_states_map_moving_right[original_state, old_directions, no_heads]
+        # and we didn't find any head to move to the left yet
+        compressed_state_out = compressed_states_map_moving_left[original_state, new_directions, no_heads]
+        # build transition
+        # don't write anything, just change states and go left
+        compressed_transitions.append(build_transition(
+            state_in=compressed_state_in,
+            char_in='_',
+            state_out=compressed_state_out,
+            char_out='_',
+            direction=Directions.L
+        ))
+    return compressed_transitions
+
+
+################################################################
+# STAGE 4
+################################################################
+
+
+def build_transitions_stage_four(compressed_alphabet: list[Char], compressed_states_map_moving_left: bidict[MovingStageInfo, int], n_tapes: int) -> list[tuple[TransitionIn, TransitionOut]]:
+    compressed_transitions: list[tuple[TransitionIn, TransitionOut]] = []
+    moving_stage_infos: list[MovingStageInfo] = compressed_states_map_moving_left.keys()
+    for compressed_char_in in compressed_alphabet:
+        for original_state, directions, dropped_heads in moving_stage_infos:
+            # we can't find a head immediately after we just found it
+            if head_clash_moving(compressed_char_in, dropped_heads, n_tapes):
+                continue
+            # save what heads we're finding on the tapes
+            picked_up_char, picked_up_heads = pick_up_heads(compressed_char_in, directions, n_tapes, desired_direction=Directions.L)
+            # write down the heads we just found in the previous cell
+            compressed_char_out = drop_heads(picked_up_char, dropped_heads, n_tapes)
+            # figure out states
+            compressed_state_in = compressed_states_map_moving_left[original_state, directions, dropped_heads]
+            compressed_state_out = compressed_states_map_moving_left[original_state, directions, picked_up_heads]
+            # build transition
+            compressed_transitions.append(build_transition(
+                state_in=compressed_state_in,
+                char_in=compressed_char_in,
+                state_out=compressed_state_out,
+                char_out=compressed_char_out,
+                direction=Directions.L
+            ))
+    return compressed_transitions
+
+
+################################################################
+# STAGE 4 -> STAGE 1 / END_STAGE
+################################################################
+
+
+def build_transitions_stage_four_to_zero(compressed_moves_going_left: set[MoveInfo], compressed_states_map_moving_left: bidict[MovingStageInfo, int], n_tapes) -> list[tuple[TransitionIn, TransitionOut]]:
+    # if we find the actual start ('S'), just go back to ready state and 
+    compressed_transitions: list[tuple[TransitionIn, TransitionOut]] = []
+    no_heads = tuple([False] * n_tapes)
+    # we pretty much only care about the original state
+    for original_state, directions in compressed_moves_going_left:
+        # just go on with the whole simulation if we're not in an endstate
+        if is_endstate(original_state):
+            continue
+        compressed_state_in = compressed_states_map_moving_left[original_state, directions, no_heads]
+        # no matter what directions we wrote, what heads we dropped, whatever. just forget about it.
+        # just go into ready state and move right
+        compressed_transitions.append(build_transition(
+            state_in=compressed_state_in,
+            char_in='S',
+            state_out=READY_STATE,
+            char_out='S',
+            direction=Directions.R
+        ))
+    return compressed_transitions
+
 
 ################################################################
 # PRETTY MUCH MAIN
@@ -619,7 +777,7 @@ def compress(original_function: TransitionFunction) -> TransitionFunction:
     compressed_start_alphabet, compressed_non_start_alphabet = compress_alphabet(original_input_alphabet, n_tapes)
     # the whole alphabet consists of the start chars and the non-start chars
     compressed_alphabet = compressed_start_alphabet + compressed_non_start_alphabet
-    
+
     # used states:
     # 0: start state
     # 1: go left (after converting input)
@@ -633,9 +791,9 @@ def compress(original_function: TransitionFunction) -> TransitionFunction:
     compressed_states_map_writing, next_state = compress_states_writing(original_trans_outs, start_at=next_state)
 
     # now consider all orders in which headers can be found
-    compressed_going_right, compressed_moves_going_left = generate_possible_moves(original_moves)
+    compressed_moves_going_right, compressed_moves_going_left = generate_possible_moves(original_moves)
     # and compress them all into states
-    compressed_states_map_moving_right, next_state = compress_states_moving(compressed_going_right, going=Directions.R, start_at=next_state)
+    compressed_states_map_moving_right, next_state = compress_states_moving(compressed_moves_going_right, going=Directions.R, start_at=next_state)
     compressed_states_map_moving_left, next_state = compress_states_moving(compressed_moves_going_left, going=Directions.L, start_at=next_state)
 
     # print("STATES READING")
@@ -655,7 +813,10 @@ def compress(original_function: TransitionFunction) -> TransitionFunction:
     compressed_transitions += build_transitions_stage_one_to_two(original_function, compressed_states_map_reading, compressed_states_map_writing, n_tapes)
     compressed_transitions += build_transitions_stage_two(compressed_non_start_alphabet, compressed_states_map_writing, n_tapes)
     compressed_transitions += build_transitions_stage_two_to_three(compressed_start_alphabet, compressed_states_map_writing, compressed_states_map_moving_right, n_tapes)
-
+    compressed_transitions += build_transitions_stage_three(compressed_alphabet, compressed_states_map_moving_right, n_tapes)
+    compressed_transitions += build_transitions_stage_three_to_four(compressed_moves_going_right, compressed_states_map_moving_right, compressed_states_map_moving_left, n_tapes)
+    compressed_transitions += build_transitions_stage_four(compressed_alphabet, compressed_states_map_moving_left, n_tapes)
+    compressed_transitions += build_transitions_stage_four_to_zero(compressed_moves_going_left, compressed_states_map_moving_left, n_tapes)
 
     # DEBUG
     # print(build_transitions_stage_one(compressed_alphabet, compressed_states_map_reading, n_tapes))

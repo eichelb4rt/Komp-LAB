@@ -87,5 +87,8 @@ class MultiCharTape(Tape):
         #     ^
         print(self.head)
         print(self.read())
-        head_char_pos = len(multichars_to_str(self.chars[:self.head])) + 1
+        if self.head == 0:
+            head_char_pos = 0
+        else:
+            head_char_pos = len(multichars_to_str(self.chars[:self.head])) + 1
         return f"{multichars_to_str(self.chars)}\n{' ' * head_char_pos}^"
