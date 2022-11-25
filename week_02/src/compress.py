@@ -35,13 +35,30 @@ from transitions import SPECIAL_CHARS, Directions, EndStates, TransitionFunction
 
 # stage 4 (moving left):
 # go left, move some heads to the left
+
+# state 4 -> stage 1:
+# if we're not in an original end state, start reading again
+
+# stage 4 -> stage 5:
+# if the original state is an endstate:
+# - accept / decline -> accept / decline
+# - halt -> stage 5
+
+# stage 5 (clean up):
+# go right to blank '_'
+# go left and copy contents of last compressed tape (and shift left again, because we need to remove the artificial start symbol)
 ################################################################
 
 # used states:
 # 0: start state
+STATE_START = 0
 # 1: go left (after converting input)
+STATE_INIT_GO_LEFT = 1
 # 2: ready for simulation
-READY_STATE = 2
+STATE_READY = 2
+# 3: entering cleanup stage
+STATE_CLEANUP = 3
+MAX_RESERVED_STATE = 3
 
 # '*' if the head is there, '-' if it's not there.
 HEAD_ALPHABET = ['-', '*']
@@ -82,14 +99,16 @@ def extract_trans_outs(trans_fun: TransitionFunction) -> set[TransitionOut]:
     return set([(state_out, tuple(chars_and_dirs_out)) for state_out, chars_and_dirs_out in trans_fun._transitions.values()])
 
 
-def extract_states(transitions: list[tuple[TransitionIn, TransitionOut]]) -> set[int | EndStates]:
+def extract_non_end_states(transitions: list[tuple[TransitionIn, TransitionOut]]) -> set[int | EndStates]:
     states: set[int | EndStates] = set()
     for t_in, t_out in transitions:
         state_in, chars_in = t_in
         state_out, chars_and_dirs_out = t_out
         chars_out, dirs_out = zip(*chars_and_dirs_out)
-        states.add(state_in)
-        states.add(state_out)
+        if not is_endstate(state_in):
+            states.add(state_in)
+        if not is_endstate(state_out):
+            states.add(state_out)
     return states
 
 
@@ -179,7 +198,7 @@ def generate_incomplete_saves(original_trans_in: list[TransitionIn], n_tapes: in
 ################################################################
 
 
-def compress_states_copying(original_alphabet: list[Char], start_at=2) -> bidict[tuple[Char, bool], int]:
+def compress_states_copying(original_alphabet: list[Char], start_at: int) -> bidict[tuple[Char, bool], int]:
     """Builds states for stage 0. In stage 0, we have to remember the last char on the tape. We also have to remember if we already wrote the first char or not (to place the heads). That's two states for every char."""
 
     compressed_states_map: bidict[tuple[Char, bool], int] = bidict()
@@ -253,6 +272,18 @@ def compress_states_moving(possible_moves: set[MoveInfo], going: Directions, sta
     return compressed_states_map, next_state
 
 
+def compress_states_cleanup(original_alphabet: list[Char], start_at: int) -> bidict[tuple[Char, bool], int]:
+    """Builds states for stage 0. In stage 0, we have to remember the last char on the tape. We also have to remember if we already wrote the first char or not (to place the heads). That's two states for every char."""
+
+    compressed_states_map: bidict[tuple[Char, bool], int] = bidict()
+    next_state = start_at
+    # we also want to copy the blank symbol ('_')
+    for char in original_alphabet + ['_']:
+        compressed_states_map[char] = next_state
+        next_state += 1
+    return compressed_states_map, next_state
+
+
 ################################################################
 # BUILD TRANSITIONS
 ################################################################
@@ -281,7 +312,7 @@ def build_transitions_stage_zero(original_alphabet: list[Char], compressed_state
         state_out = compressed_states_map_copying[replaced_char, False]
         # replace it with the atificial start symbol and go right
         compressed_transitions.append(build_transition(
-            state_in=0,
+            state_in=STATE_START,
             char_in=replaced_char,
             state_out=state_out,
             char_out=compressed_start_char,
@@ -340,7 +371,7 @@ def build_transitions_stage_zero(original_alphabet: list[Char], compressed_state
             compressed_transitions.append(build_transition(
                 state_in=state_in,
                 char_in='_',
-                state_out=1,
+                state_out=STATE_INIT_GO_LEFT,
                 char_out=compressed_char,
                 direction=Directions.L
             ))
@@ -350,9 +381,9 @@ def build_transitions_stage_zero(original_alphabet: list[Char], compressed_state
         for placed_first in [True, False]:
             compressed_char = init_multichar_without_heads(original_char) if placed_first else init_multichar_with_heads(original_char)
             compressed_transitions.append(build_transition(
-                state_in=1,
+                state_in=STATE_INIT_GO_LEFT,
                 char_in=compressed_char,
-                state_out=1,
+                state_out=STATE_INIT_GO_LEFT,
                 char_out=compressed_char,
                 direction=Directions.L
             ))
@@ -361,7 +392,7 @@ def build_transitions_stage_zero(original_alphabet: list[Char], compressed_state
     compressed_transitions.append(build_transition(
         state_in=1,
         char_in=compressed_start_char,
-        state_out=READY_STATE,
+        state_out=STATE_READY,
         char_out=compressed_start_char,
         direction=Directions.R
     ))
@@ -385,7 +416,7 @@ def build_transitions_stage_zero_to_one(compressed_alphabet: list[Char], compres
         # add it to the list
         # don't write anything, don't move anything
         compressed_transitions.append(build_transition(
-            state_in=READY_STATE,
+            state_in=STATE_READY,
             char_in=char_in,
             state_out=state_out,
             char_out=char_in,
@@ -731,12 +762,12 @@ def build_transitions_stage_four(compressed_alphabet: list[Char], compressed_sta
 
 
 ################################################################
-# STAGE 4 -> STAGE 1 / END_STAGE
+# STAGE 4 -> STAGE 1
 ################################################################
 
 
-def build_transitions_stage_four_to_zero(compressed_moves_going_left: set[MoveInfo], compressed_states_map_moving_left: bidict[MovingStageInfo, int], n_tapes) -> list[tuple[TransitionIn, TransitionOut]]:
-    # if we find the actual start ('S'), just go back to ready state and 
+def build_transitions_stage_four_to_one(compressed_moves_going_left: set[MoveInfo], compressed_states_map_moving_left: bidict[MovingStageInfo, int], n_tapes) -> list[tuple[TransitionIn, TransitionOut]]:
+    # if we find the actual start ('S'), just go back to ready state and
     compressed_transitions: list[tuple[TransitionIn, TransitionOut]] = []
     no_heads = tuple([False] * n_tapes)
     # we pretty much only care about the original state
@@ -750,12 +781,109 @@ def build_transitions_stage_four_to_zero(compressed_moves_going_left: set[MoveIn
         compressed_transitions.append(build_transition(
             state_in=compressed_state_in,
             char_in='S',
-            state_out=READY_STATE,
+            state_out=STATE_READY,
             char_out='S',
             direction=Directions.R
         ))
     return compressed_transitions
 
+
+################################################################
+# STAGE 4 -> STAGE 5 / END STATE
+################################################################
+
+
+def build_transitions_stage_four_to_five(compressed_moves_going_left: set[MoveInfo], compressed_states_map_moving_left: bidict[MovingStageInfo, int], n_tapes) -> list[tuple[TransitionIn, TransitionOut]]:
+    # if we find the actual start ('S'), just go back to ready state and
+    compressed_transitions: list[tuple[TransitionIn, TransitionOut]] = []
+    no_heads = tuple([False] * n_tapes)
+    # we pretty much only care about the original state
+    for original_state, directions in compressed_moves_going_left:
+        # just go on with the whole simulation if we're not in an endstate
+        if not is_endstate(original_state):
+            continue
+        compressed_state_in = compressed_states_map_moving_left[original_state, directions, no_heads]
+        # no matter what directions we wrote, what heads we dropped, whatever. just forget about it.
+        # either accept or reject
+        if original_state in [EndStates.ACCEPT, EndStates.REJECT]:
+            compressed_transitions.append(build_transition(
+                state_in=compressed_state_in,
+                char_in='S',
+                state_out=original_state,
+                char_out='S',
+                direction=Directions.N
+            ))
+        # halt state -> cleanup
+        else:
+            compressed_transitions.append(build_transition(
+                state_in=compressed_state_in,
+                char_in='S',
+                state_out=STATE_CLEANUP,
+                char_out='S',
+                direction=Directions.R
+            ))
+    return compressed_transitions
+
+
+################################################################
+# STAGE 5
+################################################################
+
+
+def build_transitions_stage_five(original_alphabet: list[Char], compressed_start_alphabet: list[Char], compressed_non_start_alphabet: list[Char], compressed_states_map_cleanup: bidict[Char, int]) -> list[tuple[TransitionIn, TransitionOut]]:
+    compressed_transitions: list[tuple[TransitionIn, TransitionOut]] = []
+    compressed_alphabet = compressed_start_alphabet + compressed_non_start_alphabet
+
+    # first go right no matter what compressed char we see
+    for observed_compressed_char in compressed_alphabet:
+        compressed_transitions.append(build_transition(
+            state_in=STATE_CLEANUP,
+            char_in=observed_compressed_char,
+            state_out=STATE_CLEANUP,
+            char_out=observed_compressed_char,
+            direction=Directions.R
+        ))
+
+    # then if we find blank ('_'), go left and start copying the last tape (and shifting)
+    remembered_blank = compressed_states_map_cleanup['_']
+    compressed_transitions.append(build_transition(
+        state_in=STATE_CLEANUP,
+        char_in='_',
+        state_out=remembered_blank,
+        char_out='_',
+        direction=Directions.L
+    ))
+
+    # remember the current char in a state. also write down the previous remembered char
+    for remembered_char in original_alphabet + ['_']:
+        for observed_compressed_char in compressed_non_start_alphabet:
+            # doesn't matter what compressed char we observe, we only care for the char on the last tape.
+            char_on_last_tape = observed_compressed_char[-1]
+            # we remembered the char
+            compressed_state_in = compressed_states_map_cleanup[remembered_char]
+            # now we want to remember the char on the last tape
+            compressed_state_out = compressed_states_map_cleanup[char_on_last_tape]
+            # build transition
+            compressed_transitions.append(build_transition(
+                state_in=compressed_state_in,
+                char_in=observed_compressed_char,
+                state_out=compressed_state_out,
+                char_out=remembered_char,
+                direction=Directions.L
+            ))
+
+    # if we find the artificial start symbol, write down the last remembered char and halt.
+    for remembered_char in original_alphabet + ['_']:
+        for compressed_start_char in compressed_start_alphabet:
+            compressed_state_in = compressed_states_map_cleanup[remembered_char]
+            compressed_transitions.append(build_transition(
+                state_in=compressed_state_in,
+                char_in=compressed_start_char,
+                state_out=EndStates.HALT,
+                char_out=remembered_char,
+                direction=Directions.N
+            ))
+    return compressed_transitions
 
 ################################################################
 # PRETTY MUCH MAIN
@@ -778,11 +906,8 @@ def compress(original_function: TransitionFunction) -> TransitionFunction:
     # the whole alphabet consists of the start chars and the non-start chars
     compressed_alphabet = compressed_start_alphabet + compressed_non_start_alphabet
 
-    # used states:
-    # 0: start state
-    # 1: go left (after converting input)
-    # 2: ready for simulation
-    next_state = READY_STATE + 1
+    # start counting states at 1 above the max reserved states
+    next_state = MAX_RESERVED_STATE + 1
     compressed_states_map_copying, next_state = compress_states_copying(original_input_alphabet, start_at=next_state)
 
     # compressed states start at 1 (state 0 is instantly converted to a compressed state)
@@ -795,6 +920,9 @@ def compress(original_function: TransitionFunction) -> TransitionFunction:
     # and compress them all into states
     compressed_states_map_moving_right, next_state = compress_states_moving(compressed_moves_going_right, going=Directions.R, start_at=next_state)
     compressed_states_map_moving_left, next_state = compress_states_moving(compressed_moves_going_left, going=Directions.L, start_at=next_state)
+
+    # and maybe we need to clean up (we're essentially just copying chars here again)
+    compressed_states_map_cleanup, next_state = compress_states_cleanup(original_input_alphabet, start_at=next_state)
 
     # print("STATES READING")
     # print(compressed_states_map_reading)
@@ -816,7 +944,9 @@ def compress(original_function: TransitionFunction) -> TransitionFunction:
     compressed_transitions += build_transitions_stage_three(compressed_alphabet, compressed_states_map_moving_right, n_tapes)
     compressed_transitions += build_transitions_stage_three_to_four(compressed_moves_going_right, compressed_states_map_moving_right, compressed_states_map_moving_left, n_tapes)
     compressed_transitions += build_transitions_stage_four(compressed_alphabet, compressed_states_map_moving_left, n_tapes)
-    compressed_transitions += build_transitions_stage_four_to_zero(compressed_moves_going_left, compressed_states_map_moving_left, n_tapes)
+    compressed_transitions += build_transitions_stage_four_to_one(compressed_moves_going_left, compressed_states_map_moving_left, n_tapes)
+    compressed_transitions += build_transitions_stage_four_to_five(compressed_moves_going_left, compressed_states_map_moving_left, n_tapes)
+    compressed_transitions += build_transitions_stage_five(original_input_alphabet, compressed_start_alphabet, compressed_non_start_alphabet, compressed_states_map_cleanup)
 
     # DEBUG
     # print(build_transitions_stage_one(compressed_alphabet, compressed_states_map_reading, n_tapes))
@@ -825,7 +955,7 @@ def compress(original_function: TransitionFunction) -> TransitionFunction:
     # TODO: ask if we also need to do this
     # build transition function
     # we might not use all the states we created
-    n_states = len(extract_states(compressed_transitions))
+    n_states = len(extract_non_end_states(compressed_transitions))
     compressed_function = TransitionFunction(n_states, 1, original_input_alphabet + compressed_alphabet)
     for trans_in, trans_out in compressed_transitions:
         compressed_function._add(trans_in, trans_out)
