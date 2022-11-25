@@ -1,8 +1,8 @@
 import argparse
-from enum import Enum
 import itertools
 from pathlib import Path
 from bidict import bidict
+from tabulate import tabulate
 
 from chars import Char
 from transitions import SPECIAL_CHARS, Directions, EndStates, TransitionFunction, TransitionIn, TransitionOut, is_endstate
@@ -550,15 +550,47 @@ def write_compressed(char_in: Char, chars_and_dirs_out: list[tuple[Char, Directi
     return "".join(char_out)
 
 
-def build_transitions_stage_two(compressed_non_start_alphabet: list[Char], compressed_states_map_writing: bidict[WritingStageInfo, int], n_tapes: int) -> list[tuple[TransitionIn, TransitionOut]]:
+def illegal_start_write(char_in: Char, char_out: Char) -> bool:
+    """Returns if a start symbol was written somewhere it's not supposed to be written."""
+
+    # we don't want to write the start symbol anywhere in the middle of the tape
+    return 'S' not in char_in and 'S' in char_out
+
+
+def illegal_start_overwrite(char_in: Char, char_out: Char, n_tapes: int) -> bool:
+    """Returns if a non-start symbol was written on start."""
+
+    # if we're not overwriting the start symbol, we're fine
+    if 'S' not in char_in:
+        return False
+    # we're writing on the start symbol, let's hope that we're only writing start symbols
+    for i in range(n_tapes):
+        if char_out[2 * i + 1] != 'S':
+            return True
+    return False
+
+
+def build_transitions_stage_two(compressed_alphabet: list[Char], compressed_states_map_writing: bidict[WritingStageInfo, int], n_tapes: int) -> list[tuple[TransitionIn, TransitionOut]]:
     compressed_transitions: list[tuple[TransitionIn, TransitionOut]] = []
     trans_outs: list[TransitionOut] = compressed_states_map_writing.keys()
     # we observe some chars, not the start chars tho. we don't write start chars.
-    for char_in in compressed_non_start_alphabet:
+    for char_in in compressed_alphabet:
         # we want to write some chars
         for original_state, chars_and_dirs_out in trans_outs:
             # if we find headers, write on them
             char_out = write_compressed(char_in, chars_and_dirs_out, n_tapes)
+            # if we'd be writing start illegaly here, just don't include the transition
+            # this can occur here because we don't know when the saved chars are written down
+            if illegal_start_write(char_in, char_out):
+                continue
+            # what if the original function wants to write on start? nah man.
+            if illegal_start_overwrite(char_in, char_out, n_tapes):
+                continue
+            # DEBUG
+            # if char_out == "-0-0*S-0":
+            #     print("HEY")
+            #     print(char_in)
+            #     print(chars_and_dirs_out)
             compressed_state = compressed_states_map_writing[original_state, chars_and_dirs_out]
             # construct transition
             # don't change the state
@@ -766,7 +798,7 @@ def build_transitions_stage_four(compressed_alphabet: list[Char], compressed_sta
 ################################################################
 
 
-def build_transitions_stage_four_to_one(compressed_moves_going_left: set[MoveInfo], compressed_states_map_moving_left: bidict[MovingStageInfo, int], n_tapes) -> list[tuple[TransitionIn, TransitionOut]]:
+def build_transitions_stage_four_to_one(compressed_moves_going_left: set[MoveInfo], compressed_states_map_moving_left: bidict[MovingStageInfo, int], compressed_states_map_reading: bidict[ReadingStageInfo, int], n_tapes) -> list[tuple[TransitionIn, TransitionOut]]:
     # if we find the actual start ('S'), just go back to ready state and
     compressed_transitions: list[tuple[TransitionIn, TransitionOut]] = []
     no_heads = tuple([False] * n_tapes)
@@ -777,11 +809,14 @@ def build_transitions_stage_four_to_one(compressed_moves_going_left: set[MoveInf
             continue
         compressed_state_in = compressed_states_map_moving_left[original_state, directions, no_heads]
         # no matter what directions we wrote, what heads we dropped, whatever. just forget about it.
+        # remember the state we're in however
+        saved_chars = ' ' * n_tapes
+        compressed_state_out = compressed_states_map_reading[original_state, saved_chars]
         # just go into ready state and move right
         compressed_transitions.append(build_transition(
             state_in=compressed_state_in,
             char_in='S',
-            state_out=STATE_READY,
+            state_out=compressed_state_out,
             char_out='S',
             direction=Directions.R
         ))
@@ -890,7 +925,21 @@ def build_transitions_stage_five(original_alphabet: list[Char], compressed_start
 ################################################################
 
 
-def compress(original_function: TransitionFunction) -> TransitionFunction:
+def state_map_to_array(state_map: bidict, used_states: set[int]) -> list[tuple[int, str, str]]:
+    return [(state, "->", mapped_to) for state, mapped_to in state_map.inverse.items() if state in used_states]
+
+
+def state_map_array_to_str(state_map: list[tuple[int, str, str]]) -> str:
+    return tabulate(state_map,
+                    colalign=['left'] * 3,
+                    tablefmt='plain')
+
+
+def state_map_to_str(state_map: bidict, used_states: set[int]) -> str:
+    return state_map_array_to_str(state_map_to_array(state_map, used_states))
+
+
+def compress(original_function: TransitionFunction, save_states_map=False, states_map_file: str = None) -> TransitionFunction:
     """Compresses a k-tape transition function into a 1-tape transition function."""
 
     n_tapes = original_function.n_tapes
@@ -924,41 +973,54 @@ def compress(original_function: TransitionFunction) -> TransitionFunction:
     # and maybe we need to clean up (we're essentially just copying chars here again)
     compressed_states_map_cleanup, next_state = compress_states_cleanup(original_input_alphabet, start_at=next_state)
 
-    # print("STATES READING")
-    # print(compressed_states_map_reading)
-    # print("STATES WRITING")
-    # print(compressed_states_map_writing)
-    # print("STATES MOVING RIGHT")
-    # print(compressed_states_map_moving_right)
-    # print("STATES MOVING LEFT")
-    # print(compressed_states_map_moving_left)
-
     # start building the transitions
     compressed_transitions: list[tuple[TransitionIn, TransitionOut]] = []
     compressed_transitions += build_transitions_stage_zero(original_input_alphabet, compressed_states_map_copying, n_tapes)
     compressed_transitions += build_transitions_stage_zero_to_one(compressed_alphabet, compressed_states_map_reading, n_tapes)
     compressed_transitions += build_transitions_stage_one(compressed_alphabet, compressed_states_map_reading, n_tapes)
     compressed_transitions += build_transitions_stage_one_to_two(original_function, compressed_states_map_reading, compressed_states_map_writing, n_tapes)
-    compressed_transitions += build_transitions_stage_two(compressed_non_start_alphabet, compressed_states_map_writing, n_tapes)
+    compressed_transitions += build_transitions_stage_two(compressed_alphabet, compressed_states_map_writing, n_tapes)
     compressed_transitions += build_transitions_stage_two_to_three(compressed_start_alphabet, compressed_states_map_writing, compressed_states_map_moving_right, n_tapes)
     compressed_transitions += build_transitions_stage_three(compressed_alphabet, compressed_states_map_moving_right, n_tapes)
     compressed_transitions += build_transitions_stage_three_to_four(compressed_moves_going_right, compressed_states_map_moving_right, compressed_states_map_moving_left, n_tapes)
     compressed_transitions += build_transitions_stage_four(compressed_alphabet, compressed_states_map_moving_left, n_tapes)
-    compressed_transitions += build_transitions_stage_four_to_one(compressed_moves_going_left, compressed_states_map_moving_left, n_tapes)
+    compressed_transitions += build_transitions_stage_four_to_one(compressed_moves_going_left, compressed_states_map_moving_left, compressed_states_map_reading, n_tapes)
     compressed_transitions += build_transitions_stage_four_to_five(compressed_moves_going_left, compressed_states_map_moving_left, n_tapes)
     compressed_transitions += build_transitions_stage_five(original_input_alphabet, compressed_start_alphabet, compressed_non_start_alphabet, compressed_states_map_cleanup)
 
-    # DEBUG
-    # print(build_transitions_stage_one(compressed_alphabet, compressed_states_map_reading, n_tapes))
-
-    # TODO: if original goes into q_h, clean up all the stuff and write down the output
-    # TODO: ask if we also need to do this
     # build transition function
     # we might not use all the states we created
-    n_states = len(extract_non_end_states(compressed_transitions))
+    used_states = extract_non_end_states(compressed_transitions)
+    n_states = len(used_states)
     compressed_function = TransitionFunction(n_states, 1, original_input_alphabet + compressed_alphabet)
     for trans_in, trans_out in compressed_transitions:
         compressed_function._add(trans_in, trans_out)
+
+    if save_states_map:
+        print("Saving state map.")
+        save_states_str = "=== RESERVED ===\n"
+        reserved_array = [
+            (STATE_START, "->", "start state"),
+            (STATE_INIT_GO_LEFT, "->", "state after copying, now go left"),
+            (STATE_READY, "->", "simulation starts now"),
+            (STATE_CLEANUP, "->", "simulation halted, let's clean up")
+        ]
+        save_states_str += state_map_array_to_str(reserved_array)
+        save_states_str += "\n=== COPYING ===\n"
+        save_states_str += state_map_to_str(compressed_states_map_copying, used_states)
+        save_states_str += "\n=== READING ===\n"
+        save_states_str += state_map_to_str(compressed_states_map_reading, used_states)
+        save_states_str += "\n=== WRITING ===\n"
+        save_states_str += state_map_to_str(compressed_states_map_writing, used_states)
+        save_states_str += "\n=== MOVING RIGHT ===\n"
+        save_states_str += state_map_to_str(compressed_states_map_moving_right, used_states)
+        save_states_str += "\n=== MOVING LEFT ===\n"
+        save_states_str += state_map_to_str(compressed_states_map_moving_left, used_states)
+        save_states_str += "\n=== CLEANUP ===\n"
+        save_states_str += state_map_to_str(compressed_states_map_cleanup, used_states)
+        with open(states_map_file, 'w') as f:
+            f.write(save_states_str)
+
     return compressed_function
 
 
@@ -966,17 +1028,22 @@ def main():
     parser = argparse.ArgumentParser(description="Compresses a k-tape Turing Machine into a 1-tape Turing Machine.")
     parser.add_argument("tm",
                         help="File with the encoded Turing Machine.")
+    parser.add_argument("-m", "--savemap",
+                        action='store_true',
+                        help="Also saves a map with explanations of the states.")
     args = parser.parse_args()
 
     # load tm
     original = TransitionFunction.from_file(args.tm)
     out_file = f"machines/{Path(args.tm).stem}_compressed.txt"
+    map_file = f"maps/{Path(args.tm).stem}_compressed_map.txt"
     print("Compressing.")
-    compressed = compress(original)
+    compressed = compress(original, save_states_map=args.savemap, states_map_file=map_file)
     print("Saving transtition function.")
     compressed.save(out_file)
     print("Transition function saved.")
     # try to load the transition function to check if it is a working encoding
+    print("Checking saved encoding.")
     TransitionFunction.from_file(out_file)
     print("Saved encoding checked.")
 

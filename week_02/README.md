@@ -69,6 +69,30 @@ python src/runtime.py machines/task1.txt inputs/inputs_task1.txt
 python src/runtime.py machines/task2a.txt inputs/inputs_task2.txt -d 3 --save
 ```
 
+## Compress k-tape Turing Machines
+
+`compress.py` compresses a k-tape Turing Machine into a 1-tape Turing Machine with the same outputs. The compressed machine is saved in the `machines` directory (e.g. `machines/tm1.txt` -> `machines/tm1_compressed.txt`).
+
+### Usage
+
+```text
+usage: compress.py [-h] tm
+
+Compresses a k-tape Turing Machine into a 1-tape Turing Machine.
+
+positional arguments:
+  tm          File with the encoded Turing Machine.
+
+options:
+  -h, --help  show this help message and exit
+```
+
+### Examples
+
+```text
+python src/compress.py machines/copy.txt
+```
+
 ## Test
 
 `test.py` test my implementation.
