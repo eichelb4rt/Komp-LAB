@@ -35,6 +35,7 @@ python src/tm.py machines/tm5.txt -i inputs/input.txt -t
 python src/tm.py machines/task1.txt "000111000" --animate
 python src/tm.py machines/task2a.txt "1101\$1011" -s -l
 python src/tm.py machines/multichars.txt "11|0|11|0|0" -m --animate
+python src/tm.py machines/task2a_compressed.txt "101\$101" -ma
 ```
 
 ## Approximate Runtime
@@ -66,7 +67,7 @@ options:
 
 ```text
 python src/runtime.py machines/task1.txt inputs/inputs_task1.txt
-python src/runtime.py machines/task2a.txt inputs/inputs_task2.txt -d 3 --save
+python src/runtime.py machines/task2a.txt inputs/inputs_task2_worst.txt -s
 ```
 
 ## Compress k-tape Turing Machines

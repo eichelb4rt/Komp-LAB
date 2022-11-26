@@ -22,6 +22,12 @@ def main():
     with open("inputs/inputs_task2.txt", 'w') as f:
         f.write("\n".join(inputs_task2))
 
+    # worst case inputs for task 2
+    max_n_task2_worst = 7
+    inputs_task2_worst = [f"{bin(2**n - 1)[2:]}${bin(2**n - 1)[2:]}" for n in range(max_n_task2_worst)]
+    with open("inputs/inputs_task2_worst.txt", 'w') as f:
+        f.write("\n".join(inputs_task2_worst))
+
 
 if __name__ == "__main__":
     main()
