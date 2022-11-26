@@ -59,7 +59,9 @@ STATE_INIT_GO_LEFT = 1
 STATE_READY = 2
 # 3: entering cleanup stage
 STATE_CLEANUP = 3
-MAX_RESERVED_STATE = 3
+# 4: observed blank input, just write it down and start
+STATE_BLANK_INPUT = 4
+MAX_RESERVED_STATE = 4
 
 # '*' if the head is there, '-' if it's not there.
 HEAD_ALPHABET = ['-', '*']
@@ -303,10 +305,29 @@ def build_transition(state_in: int, char_in: Char, state_out: int | EndStates, c
 def build_transitions_stage_zero(original_alphabet: list[Char], compressed_states_map_copying: bidict[Char, int], n_tapes: int) -> list[tuple[TransitionIn, TransitionOut]]:
     compressed_transitions: list[tuple[TransitionIn, TransitionOut]] = []
 
-    # TODO: empty inputs don't work yet
-
     # add an artificial start symbol (-S-S-S)
     compressed_start_char = "-S" * n_tapes
+    # first cell needs to have heads everywhere
+    init_multichar_with_heads = lambda original_char: '*' + original_char + '*_' * (n_tapes - 1)
+    # no heads here, just copy original char and fill rest with blank
+    init_multichar_without_heads = lambda original_char: '-' + original_char + '-_' * (n_tapes - 1)
+
+    # cover empty inputs
+    compressed_transitions.append(build_transition(
+        state_in=STATE_START,
+        char_in='_',
+        state_out=STATE_BLANK_INPUT,
+        char_out=compressed_start_char,
+        direction=Directions.R
+    ))
+    compressed_transitions.append(build_transition(
+        state_in=STATE_BLANK_INPUT,
+        char_in='_',
+        state_out=STATE_READY,
+        char_out=init_multichar_with_heads('_'),
+        direction=Directions.N
+    ))
+
     # whatever char there is on the first cell, remember it and put the artificial start symbol there
     for replaced_char in original_alphabet:
         # remember the replaced char in a state, remember that we haven't placed the first char yet
@@ -319,11 +340,6 @@ def build_transitions_stage_zero(original_alphabet: list[Char], compressed_state
             char_out=compressed_start_char,
             direction=Directions.R
         ))
-
-    # first cell needs to have heads everywhere
-    init_multichar_with_heads = lambda original_char: '*' + original_char + '*_' * (n_tapes - 1)
-    # no heads here, just copy original char and fill rest with blank
-    init_multichar_without_heads = lambda original_char: '-' + original_char + '-_' * (n_tapes - 1)
 
     # now shift the first char 1 to the right
     for second_char in original_alphabet:
@@ -1004,7 +1020,8 @@ def compress(original_function: TransitionFunction, save_states_map=False, state
             (STATE_START, "->", "start state"),
             (STATE_INIT_GO_LEFT, "->", "state after copying, now go left"),
             (STATE_READY, "->", "simulation starts now"),
-            (STATE_CLEANUP, "->", "simulation halted, let's clean up")
+            (STATE_CLEANUP, "->", "simulation halted, let's clean up"),
+            (STATE_BLANK_INPUT, "->", "observed blank input")
         ]
         save_states_str += state_map_array_to_str(reserved_array)
         save_states_str += "\n=== COPYING ===\n"

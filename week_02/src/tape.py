@@ -75,7 +75,10 @@ class MultiCharTape(Tape):
         else:
             machine_input = str_to_multistr(machine_input)
         # put input on tape in between and initialize head and state
-        self.chars = str_to_multichars(f"S|{machine_input}|_")
+        if len(machine_input) >= 1:
+            self.chars = str_to_multichars(f"S|{machine_input}|_")
+        else:
+            self.chars = str_to_multichars(f"S|_")
 
     def output(self) -> str:
         result = multichars_to_str(self.chars)

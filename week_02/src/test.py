@@ -2,6 +2,8 @@ import argparse
 from collections.abc import Callable
 
 import tm
+import tape
+import chars
 import compress
 import transitions
 
@@ -80,23 +82,39 @@ def test_turing_machines():
     print("Turing Machines test: all tests passed.")
 
 
+def same_output(tm1: tm.TuringMachine, tm2: tm.TuringMachine, word: str) -> bool:
+    # if they're both end states, compare them
+    if transitions.is_endstate(tm1.output()) and transitions.is_endstate(tm2.output()):
+        return tm1.output() == tm2.output()
+    # if they're not both end states, it's not the same output
+    elif transitions.is_endstate(tm1.output()) or transitions.is_endstate(tm2.output()):
+        return False
+    # they both halted, compare the string outputs
+    # one of them could be running in multichar mode
+    return chars.str_to_multistr(tm1.output()) == chars.str_to_multistr(tm2.output())
+
+
 def test_compression():
     """Tests the Turing Machine compression."""
 
     # test compression of the copy machine
     tm_copy = tm.TuringMachine.from_file("machines/copy.txt")
-    tm_copy_compressed = tm.TuringMachine(compress.compress(tm_copy.transition_function))
+    print("Compressing copy.")
+    tm_copy_compressed = tm.TuringMachine(compress.compress(tm_copy.transition_function), tape_cls=tape.MultiCharTape)
+    print("Testing copy.")
     n_numbers_tested = 10
     for x in range(n_numbers_tested):
         word = bin(x)[2:]
         tm_copy.run(word)
         tm_copy_compressed.run(word)
-        assert tm_copy.output() == tm_copy_compressed.output(), f"Copy compression failed: input = {word}, normal result = {tm_copy.output()}, compressed_result = {tm_copy_compressed.output()}"
+        assert same_output(tm_copy, tm_copy_compressed, word), f"Copy compression failed: input = {word}, normal result = {tm_copy.output()}, compressed_result = {tm_copy_compressed.output()}"
 
     # test compression of task 1
     tm_task1 = tm.TuringMachine.from_file("machines/task1.txt")
-    tm_task1_compressed = tm.TuringMachine(compress.compress(tm_task1.transition_function))
-    for n in range(20):
+    print("Compressing task1.")
+    tm_task1_compressed = tm.TuringMachine(compress.compress(tm_task1.transition_function), tape_cls=tape.MultiCharTape)
+    print("Testing task1.")
+    for n in range(10):
         words = [
             # 010
             "0" * n + "1" * n + "0" * n,
@@ -112,18 +130,22 @@ def test_compression():
         for word in words:
             tm_task1.run(word)
             tm_task1_compressed.run(word)
-            assert tm_task1.output() == tm_task1_compressed.output(), f"Task 1 compression failed: input = {word}, normal result = {tm_task1.output()}, compressed_result = {tm_task1_compressed.output()}"
+            assert same_output(tm_task1, tm_task1_compressed, word), f"Task 1 compression failed: input = {word}, normal result = {tm_task1.output()}, compressed_result = {tm_task1_compressed.output()}"
 
     # test compression of task 2a
     tm_task2a = tm.TuringMachine.from_file("machines/task2a.txt")
-    tm_task2a_compressed = tm.TuringMachine(compress.compress(tm_task2a.transition_function))
+    print("Compressing task2a.")
+    tm_task2a_compressed = tm.TuringMachine(compress.compress(tm_task2a.transition_function), tape_cls=tape.MultiCharTape)
+    print("Testing task2a.")
     n_numbers_tested = 10
     for x in range(n_numbers_tested):
         for y in range(n_numbers_tested):
             word = f"{bin(x)[2:]}${bin(y)[2:]}"
             tm_task2a.run(word)
             tm_task2a_compressed.run(word)
-            assert tm_task2a.output() == tm_task2a_compressed.output(), f"Task 2a compression failed: input = {word}, normal result = {tm_task2a.output()}, compressed_result = {tm_task2a_compressed.output()}"
+            assert same_output(tm_task2a, tm_task2a_compressed, word), f"Task 2a compression failed: input = {word}, normal result = {tm_task2a.output()}, compressed_result = {tm_task2a_compressed.output()}"
+
+    print("Compression test: all tests passed.")
 
 
 if __name__ == "__main__":
