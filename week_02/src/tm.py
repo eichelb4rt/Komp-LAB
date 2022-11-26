@@ -21,10 +21,10 @@ ANIMATION_DIRECTION_STRINGS = [state.value for state in AnimationDirections]
 
 
 class TuringMachine:
-    def __init__(self, n_states: int, n_tapes: int, transition_function: TransitionFunction, logging=False, show_transitions=False, tape_cls: Type[Tape] = SingleCharTape) -> None:
+    def __init__(self, transition_function: TransitionFunction, logging=False, show_transitions=False, tape_cls: Type[Tape] = SingleCharTape) -> None:
         # TODO: do sth with this? (i'm not using n_states anywhere)
-        self.n_states = n_states
-        self.n_tapes = n_tapes
+        self.n_states = transition_function.n_states
+        self.n_tapes = transition_function.n_tapes
         self.transition_function = transition_function
         self.logging = logging
         self.show_transitions = show_transitions
@@ -218,19 +218,7 @@ class TuringMachine:
     @classmethod
     def from_file(cls, filename: str, **kwargs) -> Self:
         fun: TransitionFunction = TransitionFunction.from_file(filename)
-        return TuringMachine(fun.n_states, fun.n_tapes, fun, **kwargs)
-
-
-class test_action(argparse.Action):
-    """This class is for the test flag."""
-
-    def __init__(self, option_strings, dest, **kwargs):
-        super().__init__(option_strings, dest, nargs=0, default=argparse.SUPPRESS, **kwargs)
-
-    def __call__(self, parser, namespace, values, option_string, **kwargs):
-        # if testing flag was set, ignore everything else and just test
-        test.test_implementation()
-        parser.exit()
+        return TuringMachine(fun, **kwargs)
 
 
 def main():
@@ -258,7 +246,7 @@ def main():
                         action='store_true',
                         help="Enable ability to have multiple chars in one tape cell.")
     parser.add_argument("--test",
-                        action=test_action,
+                        action=test.test_action(test.test_turing_machines),
                         help="Tests the implementation and the Turing Machines that were part of the task (no other arguments needed).")
     args = parser.parse_args()
 

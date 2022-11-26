@@ -6,6 +6,7 @@ from tabulate import tabulate
 
 from chars import Char
 from transitions import SPECIAL_CHARS, Directions, EndStates, TransitionFunction, TransitionIn, TransitionOut, is_endstate
+import test
 
 ################################################################
 # PLAN
@@ -1031,6 +1032,9 @@ def main():
     parser.add_argument("-m", "--savemap",
                         action='store_true',
                         help="Also saves a map with explanations of the states.")
+    parser.add_argument("--test",
+                        action=test.test_action(test.test_compression),
+                        help="Tests the compression of some selected Turing Machines (no other arguments needed).")
     args = parser.parse_args()
 
     # load tm
