@@ -7,6 +7,7 @@ import matplotlib.pyplot as plt
 from tm import TuringMachine
 
 
+MAX_TICKS = 20
 IRRELEVANT_PARAM_MARGIN = 0.005
 
 
@@ -94,6 +95,8 @@ def approximate_time(tm: TuringMachine, inputs: list[str], max_degree=4, regular
     plt.scatter(n, t)
     plot_regression_line(n, reg)
     plt.title(complexity)
+    if len(n) <= MAX_TICKS:
+        plt.xticks(n)
     # y should start at 0 to not be confusing
     plt.ylim(ymin=0)
 
