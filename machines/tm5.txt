@@ -1,0 +1,21 @@
+# this TM XORs two binary numbers separated by a '$'.
+4 3 3 14
+0,1,$
+# walk to 2nd number
+0, 0,_,_, 0, 0,R,_,N,_,N
+0, 1,_,_, 0, 1,R,_,N,_,N
+0, $,_,_, 1, $,R,_,N,_,N
+# copy 2nd number to 2nd tape
+1, 0,_,_, 1, 0,R,0,R,_,R
+1, 1,_,_, 1, 1,R,1,R,_,R
+# walk back on 1st tape
+1, _,_,_, 2, _,L,_,N,_,N
+2, 0,_,_, 2, 0,L,_,N,_,N
+2, 1,_,_, 2, 1,L,_,N,_,N
+2, $,_,_, 3, $,L,_,L,_,L
+# just XOR
+3, 0,0,_, 3, 0,L,0,L,0,L
+3, 0,1,_, 3, 0,L,1,L,1,L
+3, 1,0,_, 3, 1,L,0,L,1,L
+3, 1,1,_, 3, 1,L,1,L,0,L
+3, S,S,S, h, S,N,S,N,S,N

@@ -1,0 +1,37 @@
+=== RESERVED ===
+0  ->  start state
+1  ->  state after copying, now go left
+2  ->  simulation starts now
+3  ->  simulation halted, let's clean up
+4  ->  observed blank input
+=== COPYING ===
+5  ->  ('0', True)
+6  ->  ('0', False)
+7  ->  ('1', True)
+8  ->  ('1', False)
+=== READING ===
+9   ->  (0, '  ')
+10  ->  (0, '1 ')
+11  ->  (0, '__')
+12  ->  (0, '0_')
+13  ->  (0, '1_')
+14  ->  (0, '_ ')
+15  ->  (0, '0 ')
+16  ->  (0, ' _')
+=== WRITING ===
+17  ->  (<EndStates.HALT: 'h'>, (('_', <Directions.N: 'N'>), ('_', <Directions.N: 'N'>)))
+18  ->  (0, (('0', <Directions.R: 'R'>), ('0', <Directions.R: 'R'>)))
+19  ->  (0, (('1', <Directions.R: 'R'>), ('1', <Directions.R: 'R'>)))
+=== MOVING RIGHT ===
+20  ->  (0, (<Directions.R: 'R'>, <Directions.R: 'R'>), (True, True))
+21  ->  (0, (<Directions.R: 'R'>, <Directions.R: 'R'>), (True, False))
+22  ->  (0, (<Directions.R: 'R'>, <Directions.R: 'R'>), (False, True))
+23  ->  (0, (<Directions.R: 'R'>, <Directions.R: 'R'>), (False, False))
+24  ->  (<EndStates.HALT: 'h'>, (<Directions.N: 'N'>, <Directions.N: 'N'>), (False, False))
+=== MOVING LEFT ===
+25  ->  (<EndStates.HALT: 'h'>, (<Directions.N: 'N'>, <Directions.N: 'N'>), (False, False))
+26  ->  (0, (<Directions.N: 'N'>, <Directions.N: 'N'>), (False, False))
+=== CLEANUP ===
+27  ->  0
+28  ->  1
+29  ->  _

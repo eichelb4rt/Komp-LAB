@@ -1,0 +1,82 @@
+=== RESERVED ===
+0  ->  start state
+1  ->  state after copying, now go left
+2  ->  simulation starts now
+3  ->  simulation halted, let's clean up
+4  ->  observed blank input
+=== COPYING ===
+5   ->  ('0', True)
+6   ->  ('0', False)
+7   ->  ('1', True)
+8   ->  ('1', False)
+9   ->  ('x', True)
+10  ->  ('x', False)
+=== READING ===
+11  ->  (5, '0')
+12  ->  (3, 'S')
+13  ->  (3, 'x')
+14  ->  (5, 'x')
+15  ->  (2, '1')
+16  ->  (0, ' ')
+17  ->  (2, ' ')
+18  ->  (0, '0')
+19  ->  (4, '1')
+20  ->  (6, ' ')
+21  ->  (2, '0')
+22  ->  (4, ' ')
+23  ->  (2, 'x')
+24  ->  (1, '1')
+25  ->  (0, '_')
+26  ->  (4, '0')
+27  ->  (6, 'x')
+28  ->  (6, '_')
+29  ->  (1, ' ')
+30  ->  (3, '1')
+31  ->  (1, '0')
+32  ->  (4, 'x')
+33  ->  (3, ' ')
+34  ->  (1, 'x')
+35  ->  (5, ' ')
+=== WRITING ===
+36  ->  (2, (('x', <Directions.R: 'R'>),))
+37  ->  (4, (('1', <Directions.L: 'L'>),))
+38  ->  (4, (('x', <Directions.L: 'L'>),))
+39  ->  (2, (('1', <Directions.R: 'R'>),))
+40  ->  (6, (('x', <Directions.R: 'R'>),))
+41  ->  (1, (('x', <Directions.R: 'R'>),))
+42  ->  (6, (('S', <Directions.R: 'R'>),))
+43  ->  (3, (('x', <Directions.L: 'L'>),))
+44  ->  (<EndStates.ACCEPT: 'y'>, (('_', <Directions.N: 'N'>),))
+45  ->  (1, (('0', <Directions.R: 'R'>),))
+46  ->  (0, (('x', <Directions.R: 'R'>),))
+47  ->  (5, (('0', <Directions.L: 'L'>),))
+=== MOVING RIGHT ===
+48  ->  (6, (<Directions.R: 'R'>,), (True,))
+49  ->  (6, (<Directions.R: 'R'>,), (False,))
+50  ->  (1, (<Directions.R: 'R'>,), (True,))
+51  ->  (1, (<Directions.R: 'R'>,), (False,))
+52  ->  (4, (<Directions.L: 'L'>,), (False,))
+53  ->  (<EndStates.ACCEPT: 'y'>, (<Directions.N: 'N'>,), (False,))
+54  ->  (3, (<Directions.L: 'L'>,), (False,))
+55  ->  (5, (<Directions.L: 'L'>,), (False,))
+56  ->  (0, (<Directions.R: 'R'>,), (True,))
+57  ->  (0, (<Directions.R: 'R'>,), (False,))
+58  ->  (2, (<Directions.R: 'R'>,), (True,))
+59  ->  (2, (<Directions.R: 'R'>,), (False,))
+=== MOVING LEFT ===
+60  ->  (2, (<Directions.N: 'N'>,), (False,))
+61  ->  (<EndStates.ACCEPT: 'y'>, (<Directions.N: 'N'>,), (False,))
+62  ->  (4, (<Directions.L: 'L'>,), (True,))
+63  ->  (4, (<Directions.L: 'L'>,), (False,))
+64  ->  (6, (<Directions.N: 'N'>,), (False,))
+65  ->  (1, (<Directions.N: 'N'>,), (False,))
+66  ->  (3, (<Directions.L: 'L'>,), (True,))
+67  ->  (3, (<Directions.L: 'L'>,), (False,))
+68  ->  (5, (<Directions.L: 'L'>,), (True,))
+69  ->  (5, (<Directions.L: 'L'>,), (False,))
+70  ->  (0, (<Directions.N: 'N'>,), (False,))
+=== CLEANUP ===
+71  ->  0
+72  ->  1
+73  ->  x
+74  ->  _
