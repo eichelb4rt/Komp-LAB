@@ -92,8 +92,11 @@ class TransitionFunction:
             colalign=["center"] * 5,
             tablefmt='simple_grid')
 
-    def _add(self, input: TransitionIn, output: TransitionOut):
-        self._transitions[to_key(input)] = output
+    def _add(self, t_in: TransitionIn, t_out: TransitionOut):
+        t_in_key = to_key(t_in)
+        if t_in_key in self._transitions:
+            raise RuntimeError(f"Duplicate transition input: {t_in}")
+        self._transitions[t_in_key] = t_out
 
     def save(self, filename: str):
         """Saves the encoded transition function to a file."""

@@ -587,11 +587,11 @@ def illegal_start_overwrite(char_in: Char, char_out: Char, n_tapes: int) -> bool
     return False
 
 
-def build_transitions_stage_two(compressed_alphabet: list[Char], compressed_states_map_writing: bidict[WritingStageInfo, int], n_tapes: int) -> list[tuple[TransitionIn, TransitionOut]]:
+def build_transitions_stage_two(compressed_non_start_alphabet: list[Char], compressed_states_map_writing: bidict[WritingStageInfo, int], n_tapes: int) -> list[tuple[TransitionIn, TransitionOut]]:
     compressed_transitions: list[tuple[TransitionIn, TransitionOut]] = []
     trans_outs: list[TransitionOut] = compressed_states_map_writing.keys()
     # we observe some chars, not the start chars tho. we don't write start chars.
-    for char_in in compressed_alphabet:
+    for char_in in compressed_non_start_alphabet:
         # we want to write some chars
         for original_state, chars_and_dirs_out in trans_outs:
             # if we find headers, write on them
@@ -996,7 +996,7 @@ def compress(original_function: TransitionFunction, save_states_map=False, state
     compressed_transitions += build_transitions_stage_zero_to_one(compressed_alphabet, compressed_states_map_reading, n_tapes)
     compressed_transitions += build_transitions_stage_one(compressed_alphabet, compressed_states_map_reading, n_tapes)
     compressed_transitions += build_transitions_stage_one_to_two(original_function, compressed_states_map_reading, compressed_states_map_writing, n_tapes)
-    compressed_transitions += build_transitions_stage_two(compressed_alphabet, compressed_states_map_writing, n_tapes)
+    compressed_transitions += build_transitions_stage_two(compressed_non_start_alphabet, compressed_states_map_writing, n_tapes)
     compressed_transitions += build_transitions_stage_two_to_three(compressed_start_alphabet, compressed_states_map_writing, compressed_states_map_moving_right, n_tapes)
     compressed_transitions += build_transitions_stage_three(compressed_alphabet, compressed_states_map_moving_right, n_tapes)
     compressed_transitions += build_transitions_stage_three_to_four(compressed_moves_going_right, compressed_states_map_moving_right, compressed_states_map_moving_left, n_tapes)
@@ -1005,13 +1005,8 @@ def compress(original_function: TransitionFunction, save_states_map=False, state
     compressed_transitions += build_transitions_stage_four_to_five(compressed_moves_going_left, compressed_states_map_moving_left, n_tapes)
     compressed_transitions += build_transitions_stage_five(original_input_alphabet, compressed_start_alphabet, compressed_non_start_alphabet, compressed_states_map_cleanup)
 
-    # build transition function
     # we might not use all the states we created
     used_states = extract_non_end_states(compressed_transitions)
-    n_states = len(used_states)
-    compressed_function = TransitionFunction(n_states, 1, original_input_alphabet + compressed_alphabet)
-    for trans_in, trans_out in compressed_transitions:
-        compressed_function._add(trans_in, trans_out)
 
     if save_states_map:
         print("Saving state map.")
@@ -1038,6 +1033,12 @@ def compress(original_function: TransitionFunction, save_states_map=False, state
         save_states_str += state_map_to_str(compressed_states_map_cleanup, used_states)
         with open(states_map_file, 'w') as f:
             f.write(save_states_str)
+
+    # build transition function
+    n_states = len(used_states)
+    compressed_function = TransitionFunction(n_states, 1, original_input_alphabet + compressed_alphabet)
+    for trans_in, trans_out in compressed_transitions:
+        compressed_function._add(trans_in, trans_out)
 
     return compressed_function
 
