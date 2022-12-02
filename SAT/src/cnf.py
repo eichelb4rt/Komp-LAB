@@ -1,4 +1,5 @@
 import argparse
+from types import NoneType
 from typing import Self
 from io import TextIOWrapper
 
@@ -8,6 +9,20 @@ Variable = int
 # literals are variables with a sign
 Literal = int
 Clause = list[Literal]
+
+
+def literal_true(literal: Literal, assignment: bool | NoneType) -> bool:
+    if assignment is None:
+        return False
+    # literal > 0 -> variable has to be True, literal < 0 -> variable has to be False
+    return (literal > 0) == assignment
+
+
+def literal_false(literal: Literal, assignment: bool | NoneType) -> bool:
+    if assignment is None:
+        return False
+    # literal > 0 -> variable has to be False, literal < 0 -> variable has to be True
+    return (literal < 0) == assignment
 
 
 def skip_comments(f: TextIOWrapper):
@@ -97,7 +112,7 @@ def main():
     parser.add_argument(
         "input",
         type=str,
-        help="Input file where DIMACS notation of a formular is stored."
+        help="Input file where DIMACS notation of a formula is stored."
     )
     args = parser.parse_args()
     cnf = CNF.from_file(args.input)

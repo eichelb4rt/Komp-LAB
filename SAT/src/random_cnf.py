@@ -84,7 +84,7 @@ def gen_clause(n: int, k: int) -> Clause:
 
 
 def main():
-    parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser(description="Generates random CNFs.")
     parser.add_argument(
         "t",
         type=int,
