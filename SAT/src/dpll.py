@@ -114,7 +114,7 @@ def main():
     parser.add_argument(
         "input",
         type=str,
-        help="Input file where DIMACS notation of a formula is stored."
+        help="Input file where DIMACS encoding of a formula is stored."
     )
     args = parser.parse_args()
     cnf = CNF.from_file(args.input)
