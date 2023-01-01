@@ -1,6 +1,6 @@
 import argparse
 from types import NoneType
-from typing import Self
+from typing import Optional, Self
 from io import TextIOWrapper
 
 
@@ -25,10 +25,11 @@ def literal_false(literal: Literal, assignment: bool | NoneType) -> bool:
     return (literal < 0) == assignment
 
 
-def skip_comments(f: TextIOWrapper):
+def skip_comments(f: TextIOWrapper) -> str:
     while line := f.readline():
         if line[0] != 'c':
             return line
+    return ""
 
 
 class CNF:
@@ -40,7 +41,7 @@ class CNF:
     def __repr__(self) -> str:
         return repr(self.clauses)
 
-    def write(self, filename: str, comment: str = None):
+    def write(self, filename: str, comment: Optional[str] = None):
         """Writes the CNF to a file with DIMACS encoding.
 
         Parameters
