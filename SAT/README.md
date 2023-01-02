@@ -56,3 +56,44 @@ options:
 python src/dpll.py random_cnfs/random_cnf_0.txt
 python src/dpll.py cnfs/unsatisfiable_cnf.txt
 ```
+
+## Graph Encoding
+
+- first line: `n_nodes n_edges`
+- second line: all nodes (only integer values), separated by comma
+- all lines after: edges in the form `from -- to` (edges are undirected)
+
+## Convert to DOT Encoding
+
+`graph.py` reads a graph from a file and converts it into DOT encoding. The DOT encoding is saved in the `dot_encodings` directory (e.g. `graphs/graph_0.txt` -> `dot_encodings/graph_0.dot`).
+
+### Usage
+
+```text
+usage: graph.py [-h] [--test] filename
+
+Reads a graph from a file and saves it as a dot encoding.
+
+positional arguments:
+  filename    File with the encoded graph.
+
+options:
+  -h, --help  show this help message and exit
+  --test      Tests the implementation and the Turing Machines that were part of the task (no other arguments needed).
+```
+
+### Examples
+
+```text
+python src/graph.py graphs/graph_0.txt
+```
+
+## Render Graphs
+
+`render.sh` reads a graph from a file and renders it. The rendered image is saved in `.png` format in the `renders` directory (e.g. `graphs/graph_0.txt` -> `renders/render_graph_0.png`).
+
+### Examples
+
+```text
+./render.sh graphs/graph_0.txt
+```
