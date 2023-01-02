@@ -1,5 +1,8 @@
 import argparse
+from dpll import DPLLSolver
 from graph import Graph, Node
+from circuit import CountBitsCircuit, ZERO_BIT, MAX_RESERVED_VARIABLE
+from cnf import CNF, Clause, Variable
 from test import TestAction
 
 
@@ -28,6 +31,40 @@ def independent_set(graph: Graph, k: int) -> tuple[bool, list[Node]]:
     return False, None
 
 
+def independent_set_cnf(graph: Graph, k: int) -> bool:
+    # map the nodes to variables (1 is reserved for ZERO_BIT)
+    to_variable = {node: variable for variable, node in enumerate(graph.nodes, start=MAX_RESERVED_VARIABLE + 1)}
+    # encode the edges in the cnf
+    edge_clauses: list[Clause] = [[-to_variable[from_node], -to_variable[to_node]] for from_node, to_node in graph.get_edges()]
+
+    # encode that the number of picked nodes is k
+    # extract node variables
+    node_variables = list(to_variable.values())
+    # encode k as bits
+    k_bits = [int(bit) for bit in bin(k)[2:]]
+
+    # make a circuit that calculates the number of true variables
+    counter = CountBitsCircuit(node_variables, len(k_bits), start_at=max(node_variables) + 1)
+    # simulate the gates with clauses
+    counter_clauses = counter.sat_equivalent_cnf().clauses
+    # the sum bits should equal the k bits, encode that
+    correct_sum_bit_clauses: list[Clause] = [[sum_bit_variable * (1 if k_bit == 1 else -1)] for sum_bit_variable, k_bit in zip(counter.sum_bits, k_bits)]
+
+    # build the cnf
+    # variables are: nodes, gates, ZERO_BIT
+    n_variables = len(graph.nodes) + counter.size + 1
+    # clauses: "don't pick nodes that are connected with an edge", "counter gates", "variable count is k"
+    all_clauses = edge_clauses + counter_clauses + correct_sum_bit_clauses
+    n_clauses = len(all_clauses)
+    cnf = CNF(n_variables, n_clauses, all_clauses)
+    solver = DPLLSolver()
+    satisfiable = solver.solve(cnf)
+    if satisfiable:
+        print(cnf, solver.assignments_view)
+    return satisfiable
+    
+
+
 ################################################################
 # TESTS
 ################################################################
@@ -37,7 +74,9 @@ def test_independent_set():
     graph = Graph.from_file("graphs/graph_0.txt")
     for k in range(4):
         assert independent_set(graph, k)[0]
+        assert independent_set_cnf(graph, k)
     for k in range(4, 10):
+        assert not independent_set_cnf(graph, k)
         assert not independent_set(graph, k)[0]
 
     print("independent_set test: all tests passed.")

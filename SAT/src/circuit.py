@@ -3,6 +3,7 @@ from cnf import CNF, Clause, Variable
 
 
 ZERO_BIT = 1
+MAX_RESERVED_VARIABLE = ZERO_BIT
 
 
 class LogicalOperator(Enum):
@@ -56,9 +57,9 @@ class HalfAdder(Circuit):
             # -b
             (LogicalOperator.NEGATE, start_at + 2, b, b),
             # -a ^ b
-            (LogicalOperator.NEGATE, start_at + 3, start_at + 1, b),
+            (LogicalOperator.AND, start_at + 3, start_at + 1, b),
             # a ^ -b
-            (LogicalOperator.NEGATE, start_at + 4, a, start_at + 2),
+            (LogicalOperator.AND, start_at + 4, a, start_at + 2),
             # a xor b (sum bit)
             (LogicalOperator.OR, start_at + 5, start_at + 3, start_at + 4),
         ]
@@ -108,7 +109,7 @@ class RCA(Circuit):
 
         # remember output bits
         self.sum_bits: list[Variable] = [half_adder.sum_bit] + [adder.sum_bit for adder in full_adders]
-        self.carry_bit = full_adders[-1].c_out
+        self.carry_bit = full_adders[-1].c_out if n_bits > 1 else half_adder.carry_bit
 
         super().__init__(a + b, gates)
 
@@ -139,6 +140,9 @@ class CountBitsCircuit(Circuit):
 
         # output is the last sum
         self.sum_bits = adders[-1].sum_bits
+        
+        # save how many variables we created
+        self.size = RCA.size(n_bits) * (len(inputs) - 1)
 
         # careful! ZERO_BIT was used for padding and is also an input to the circuit
         super().__init__(inputs + [ZERO_BIT], gates)
