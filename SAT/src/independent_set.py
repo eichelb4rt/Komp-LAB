@@ -49,18 +49,25 @@ def independent_set_cnf(graph: Graph, k: int) -> bool:
     counter_clauses = counter.sat_equivalent_cnf().clauses
     # the sum bits should equal the k bits, encode that
     correct_sum_bit_clauses: list[Clause] = [[sum_bit_variable * (1 if k_bit == 1 else -1)] for sum_bit_variable, k_bit in zip(counter.sum_bits, k_bits)]
+    
+    # make sure the ZERO_BIT is set to 0
+    zero_bit_clauses = [[-ZERO_BIT]]
 
     # build the cnf
     # variables are: nodes, gates, ZERO_BIT
     n_variables = len(graph.nodes) + counter.size + 1
-    # clauses: "don't pick nodes that are connected with an edge", "counter gates", "variable count is k"
-    all_clauses = edge_clauses + counter_clauses + correct_sum_bit_clauses
+    # clauses: "don't pick nodes that are connected with an edge", "counter gates", "variable count is k", "ZERO_BITS"
+    all_clauses = edge_clauses + counter_clauses + correct_sum_bit_clauses + zero_bit_clauses
     n_clauses = len(all_clauses)
     cnf = CNF(n_variables, n_clauses, all_clauses)
     solver = DPLLSolver()
     satisfiable = solver.solve(cnf)
-    if satisfiable:
-        print(cnf, solver.assignments_view)
+    print(f"k: {k}")
+    print(f"satisfiable: {satisfiable}")
+    print(f"node variables: {node_variables}")
+    print(f"sum variables: {counter.sum_bits}")
+    print(f"cnf: {cnf}")
+    print(f"assignments: {solver.assignments_view}")
     return satisfiable
     
 
