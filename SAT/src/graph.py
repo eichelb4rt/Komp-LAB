@@ -1,8 +1,21 @@
 import argparse
+from io import TextIOWrapper
 from typing import Self
 from pathlib import Path
 
-import test
+from test import TestAction
+
+
+################################################################
+# FUNCTIONALITY
+################################################################
+
+
+def skip_comments(f: TextIOWrapper) -> str:
+    while line := f.readline():
+        if line[0] != '#':
+            return line
+    return ""
 
 
 Node = int
@@ -48,6 +61,30 @@ class Graph:
         return False
 
     @classmethod
+    def from_file(cls, filename) -> Self:
+        with open(filename, 'r') as f:
+            # read promises
+            firstline = skip_comments(f)
+            n_nodes, n_edges = [int(c) for c in firstline.split(" ")]
+            # read nodes
+            secondline = skip_comments(f)
+            nodes = {int(node) for node in secondline.split(",")}
+            assert len(nodes) == n_nodes, f"Nodes do not have promised count. (Promised: {n_nodes}, Observed: {len(nodes)})"
+            # read edges
+            edges: list[Edge] = []
+            while line := skip_comments(f):
+                from_node, to_node = cls.parse_edge(line)
+                assert (from_node, to_node) not in edges and (to_node, from_node) not in edges, f"Edges should be unique, {(from_node, to_node)} appeared twice."
+                edges.append((from_node, to_node))
+            assert len(edges) == n_edges, f"Edges do not have promised count. (Promised: {n_edges}, Observed: {len(edges)})"
+        return cls.from_edges(nodes, edges)
+
+    @classmethod
+    def parse_edge(cls, edge_str: str) -> Edge:
+        from_node, to_node = edge_str.split("--")
+        return (int(from_node), int(to_node))
+
+    @classmethod
     def from_edges(cls, nodes: set[Node], edges: list[Edge]) -> Self:
         """Assumes all edges are unique."""
 
@@ -62,30 +99,6 @@ class Graph:
             neighbours[edge[1]].append(edge[0])
         return cls(observed_nodes, neighbours)
 
-    @classmethod
-    def from_file(cls, filename) -> Self:
-        with open(filename, 'r') as f:
-            # read promises
-            firstline = f.readline()
-            n_nodes, n_edges = [int(c) for c in firstline.split(" ")]
-            # read nodes
-            secondline = f.readline()
-            nodes = {int(node) for node in secondline.split(",")}
-            assert len(nodes) == n_nodes, f"Nodes do not have promised size. (Promised: {n_nodes}, Observed: {len(nodes)})"
-            # read edges
-            edges: list[Edge] = []
-            while line := f.readline():
-                from_node, to_node = cls.parse_edge(line)
-                assert (from_node, to_node) not in edges and (to_node, from_node) not in edges, f"Edges should be unique, {(from_node, to_node)} appeared twice."
-                edges.append((from_node, to_node))
-            assert len(edges) == n_edges, f"Edges do not have promised size. (Promised: {n_edges}, Observed: {len(edges)})"
-        return cls.from_edges(nodes, edges)
-
-    @classmethod
-    def parse_edge(cls, edge_str: str) -> Edge:
-        from_node, to_node = edge_str.split("--")
-        return (int(from_node), int(to_node))
-
     def dot_encode(self) -> str:
         dot_str = "strict graph {\n"
         # add all nodes
@@ -99,13 +112,75 @@ class Graph:
         return dot_str
 
 
+################################################################
+# TESTS
+################################################################
+
+
+def test_graphs():
+    nodes_0 = {1, 3, 5, 7, 9}
+    edges_0 = [
+        (1, 3),
+        (1, 5),
+        (1, 7),
+        (7, 9)
+    ]
+    graph_0 = Graph.from_edges(nodes_0, edges_0)
+
+    nodes_1 = {1, 3, 5}
+    edges_1 = [
+        (1, 3),
+        (1, 5)
+    ]
+    graph_1 = Graph.from_edges(nodes_1, edges_1)
+
+    nodes_2 = {1, 3, 4}
+    edges_2 = [
+        (1, 3),
+        (1, 4)
+    ]
+    graph_2 = Graph.from_edges(nodes_2, edges_2)
+
+    edges_3 = [
+        (1, 3)
+    ]
+    graph_3 = Graph.from_edges(nodes_1, edges_3)
+
+    # neighbours of 1 are 3, 5 and 7
+    assert graph_0.adjacent_nodes({1}) == {3, 5, 7}
+
+    # the empty subgraph should be empty
+    empty_set = set()
+    assert graph_0.subgraph(empty_set).is_empty()
+
+    # graph 1 is a subgraph of graph 0
+    assert graph_0.subgraph(nodes_1) == graph_1
+
+    # even though they are isomorph, they are not the exact same graph
+    assert graph_1 != graph_2
+
+    # same nodes, but not the same edges
+    assert graph_1 != graph_3
+
+    # try reading graph_0 from file and make sure it's the same as here
+    graph_0_from_file = Graph.from_file("graphs/graph_0.txt")
+    assert graph_0_from_file == graph_0
+
+    print("Graph test: all tests passed.")
+
+
+################################################################
+# MAIN
+################################################################
+
+
 def main():
     parser = argparse.ArgumentParser(description="Reads a graph from a file and saves it as a dot encoding.")
     parser.add_argument("filename",
                         help="File with the encoded graph.")
     parser.add_argument("--test",
-                        action=test.TestAction.build(test.test_graphs),
-                        help="Tests the implementation and the Turing Machines that were part of the task (no other arguments needed).")
+                        action=TestAction.build(test_graphs),
+                        help="Tests the implementation (no other arguments needed).")
     args = parser.parse_args()
 
     graph = Graph.from_file(args.filename)

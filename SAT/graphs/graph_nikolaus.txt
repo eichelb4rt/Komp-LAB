@@ -1,0 +1,14 @@
+# house of saint nikolaus
+5 8
+1, 2, 3, 4, 5
+# roof
+1 -- 2
+1 -- 3
+2 -- 3
+# walls
+3 -- 4
+4 -- 5
+5 -- 2
+# diagonal
+2 -- 4
+3 -- 5

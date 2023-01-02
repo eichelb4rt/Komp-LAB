@@ -62,6 +62,28 @@ python src/dpll.py cnfs/unsatisfiable_cnf.txt
 - first line: `n_nodes n_edges`
 - second line: all nodes (only integer values), separated by comma
 - all lines after: edges in the form `from -- to` (edges are undirected)
+- lines that start with \# are ignored
+
+### Example
+
+This is the house of saint nikolaus.
+
+```text
+# house of saint nikolaus
+5 8
+1, 2, 3, 4, 5
+# roof
+1 -- 2
+1 -- 3
+2 -- 3
+# walls
+3 -- 4
+4 -- 5
+5 -- 2
+# diagonal
+2 -- 4
+3 -- 5
+```
 
 ## Convert to DOT Encoding
 
@@ -79,7 +101,7 @@ positional arguments:
 
 options:
   -h, --help  show this help message and exit
-  --test      Tests the implementation and the Turing Machines that were part of the task (no other arguments needed).
+  --test      Tests the implementation (no other arguments needed).
 ```
 
 ### Examples
@@ -95,5 +117,35 @@ python src/graph.py graphs/graph_0.txt
 ### Examples
 
 ```text
-./render.sh graphs/graph_0.txt
+./render.sh graphs/graph_nikolaus.txt
+```
+
+![House of Saint Nikolaus](renders/render_graph_nikolaus.png)
+
+Well that looks like a pretty house.
+
+## Find Independent Sets
+
+`independent_set.py` takes a graph and a parameter `k` and finds out if there is and independent set of nodes with size `k` in the given graph.
+
+### Usage
+
+```text
+usage: independent_set.py [-h] [--test] filename k
+
+Determines if there is an independent set of k nodes.
+
+positional arguments:
+  filename    File with the encoded graph.
+  k           Number of independent nodes.
+
+options:
+  -h, --help  show this help message and exit
+  --test      Tests the implementation (no other arguments needed).
+```
+
+### Examples
+
+```text
+python src/independent_set.py graphs/graph_0.txt 3
 ```
