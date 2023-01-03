@@ -214,10 +214,10 @@ def main():
             assert result == a + b, f"{a} + {b} = {result}?"
 
     # test bit counter
-    n_nodes = 3
-    n_bits = 2
-    node_vars = list(range(MAX_RESERVED_VARIABLE, MAX_RESERVED_VARIABLE + n_nodes))
-    counter = CountBitsCircuit(node_vars, n_bits, start_at=MAX_RESERVED_VARIABLE + n_nodes)
+    n_nodes = 5
+    n_bits = 3
+    node_vars = list(range(MAX_RESERVED_VARIABLE + 1, MAX_RESERVED_VARIABLE + n_nodes + 1))
+    counter = CountBitsCircuit(node_vars, n_bits, start_at=MAX_RESERVED_VARIABLE + n_nodes + 1)
     for bits in itertools.product([True, False], repeat=n_nodes):
         expected_count = sum(bits)
         # don't forget to assign the ZERO_BIT
