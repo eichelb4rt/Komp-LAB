@@ -1,4 +1,5 @@
 from enum import Enum
+import itertools
 from cnf import CNF, Clause, Variable
 
 
@@ -43,6 +44,21 @@ class Circuit:
         clauses = [clause for gate in self.gates for clause in to_clauses(gate)]
         n_clauses = len(clauses)
         return CNF(n_variables, n_clauses, clauses)
+
+    def evaluate(self, input_assignments: list[bool], output_vars: list[Variable]) -> list[bool]:
+        assignments: dict[Variable, bool] = {variable: assignment for variable, assignment in zip(self.inputs, input_assignments)}
+        self.gates.sort(key=lambda gate: gate[1])
+        for gate in self.gates:
+            operator, out, in1, in2 = gate
+            assert out > in1 and out > in2, f"Gate output should always be greater than inputs. ({gate})"
+            if operator == LogicalOperator.AND:
+                assignments[out] = assignments[in1] and assignments[in2]
+            elif operator == LogicalOperator.OR:
+                assignments[out] = assignments[in1] or assignments[in2]
+            elif operator == LogicalOperator.NEGATE:
+                assert in1 == in2, f"Negate inputs should be the same (it has only 1 input): {gate}"
+                assignments[out] = not assignments[in1]
+        return [assignments[output_var] for output_var in output_vars]
 
 
 class HalfAdder(Circuit):
@@ -123,7 +139,7 @@ class CountBitsCircuit(Circuit):
 
     def __init__(self, inputs: list[Variable], n_bits: int, start_at: int) -> None:
         # convert all the input bits to n-bit numbers (pad left with zeros)
-        input_numbers: list[list[Variable]] = [[ZERO_BIT] * (n_bits - 1) + [bit] for bit in inputs]
+        input_numbers: list[list[Variable]] = [pad_right_vars([bit], n_bits) for bit in inputs]
 
         # add up the input bits with n-bit RCAs
         adders: list[RCA] = [None] * (len(inputs) - 1)
@@ -140,7 +156,7 @@ class CountBitsCircuit(Circuit):
 
         # output is the last sum
         self.sum_bits = adders[-1].sum_bits
-        
+
         # save how many variables we created
         self.size = RCA.size(n_bits) * (len(inputs) - 1)
 
@@ -148,8 +164,66 @@ class CountBitsCircuit(Circuit):
         super().__init__(inputs + [ZERO_BIT], gates)
 
 
+def pad_right_vars(x: list[Variable], to_size: int) -> list[Variable]:
+    left_space = to_size - len(x)
+    return x + [ZERO_BIT] * left_space
+
+
+def pad_right_bits(x: list[int], to_size: int) -> list[int]:
+    left_space = to_size - len(x)
+    return x + [False] * left_space
+
+
+def pad_left_bits(x: list[int], to_size: int) -> list[int]:
+    left_space = to_size - len(x)
+    return [False] * left_space + x
+
+
+def make_bits_and_vars(x: int, n_bits: int, start_at: int) -> tuple[list[int], list[Variable]]:
+    x_bits = [bool(int(bit)) for bit in reversed(bin(x)[2:])]
+    x_vars = pad_right_vars(list(range(start_at, start_at + len(x_bits))), n_bits)
+    return x_bits, x_vars
+
+def to_number(sum_bits: list[bool]) -> int:
+    # lowest bit is at sum_bits[0]
+    return int("".join([str(int(bit)) for bit in reversed(sum_bits)]), 2)
+
+
 def main():
-    print(FullAdder.size)
+    # test full adder
+    for a in [True, False]:
+        for b in [True, False]:
+            for c_in in [True, False]:
+                expected_carry, expected_sum = pad_left_bits([int(bit) for bit in bin(a + b + c_in)[2:]], 2)
+                adder = FullAdder(1, 2, 3, start_at=4)
+                sum_bit, c_out = adder.evaluate([a, b, c_in], [adder.sum_bit, adder.c_out])
+                assert bool(expected_sum) == sum_bit
+                assert bool(expected_carry) == c_out
+
+    # test RCA
+    n_bits = 5
+    for a in range(9):
+        for b in range(9):
+            # bit representation of a
+            a_bits, a_vars = make_bits_and_vars(a, n_bits, start_at=2)
+            b_bits, b_vars = make_bits_and_vars(b, n_bits, start_at=2 + len(a_bits))
+            # make the adder
+            adder = RCA(a_vars, b_vars, n_bits, start_at=2 + len(a_bits) + len(b_bits))
+            sum_bits = adder.evaluate(pad_right_bits(a_bits, n_bits) + pad_right_bits(b_bits, n_bits), adder.sum_bits)
+            result = to_number(sum_bits)
+            assert result == a + b, f"{a} + {b} = {result}?"
+
+    # test bit counter
+    n_nodes = 3
+    n_bits = 2
+    node_vars = list(range(MAX_RESERVED_VARIABLE, MAX_RESERVED_VARIABLE + n_nodes))
+    counter = CountBitsCircuit(node_vars, n_bits, start_at=MAX_RESERVED_VARIABLE + n_nodes)
+    for bits in itertools.product([True, False], repeat=n_nodes):
+        expected_count = sum(bits)
+        # don't forget to assign the ZERO_BIT
+        sum_bits = counter.evaluate(list(bits) + [False], counter.sum_bits)
+        result = to_number(sum_bits)
+        assert result == expected_count, f"{bits} has {result} active bits?"
 
 
 if __name__ == "__main__":
