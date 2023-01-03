@@ -40,8 +40,8 @@ def independent_set_cnf(graph: Graph, k: int) -> bool:
     # encode that the number of picked nodes is k
     # extract node variables
     node_variables = list(to_variable.values())
-    # encode k as bits
-    k_bits = [int(bit) for bit in bin(k)[2:]]
+    # encode k as bits (lowest bit at k_bits[0])
+    k_bits = [int(bit) for bit in reversed(bin(k)[2:])]
 
     # make a circuit that calculates the number of true variables
     counter = CountBitsCircuit(node_variables, len(k_bits), start_at=max(node_variables) + 1)
@@ -49,7 +49,7 @@ def independent_set_cnf(graph: Graph, k: int) -> bool:
     counter_clauses = counter.sat_equivalent_cnf().clauses
     # the sum bits should equal the k bits, encode that
     correct_sum_bit_clauses: list[Clause] = [[sum_bit_variable * (1 if k_bit == 1 else -1)] for sum_bit_variable, k_bit in zip(counter.sum_bits, k_bits)]
-    
+
     # make sure the ZERO_BIT is set to 0
     zero_bit_clauses = [[-ZERO_BIT]]
 
@@ -62,14 +62,7 @@ def independent_set_cnf(graph: Graph, k: int) -> bool:
     cnf = CNF(n_variables, n_clauses, all_clauses)
     solver = DPLLSolver()
     satisfiable = solver.solve(cnf)
-    print(f"k: {k}")
-    print(f"satisfiable: {satisfiable}")
-    print(f"node variables: {node_variables}")
-    print(f"sum variables: {counter.sum_bits}")
-    print(f"cnf: {cnf}")
-    print(f"assignments: {solver.assignments_view}")
     return satisfiable
-    
 
 
 ################################################################
@@ -78,13 +71,27 @@ def independent_set_cnf(graph: Graph, k: int) -> bool:
 
 
 def test_independent_set():
-    graph = Graph.from_file("graphs/graph_0.txt")
-    for k in range(4):
-        assert independent_set(graph, k)[0]
-        assert independent_set_cnf(graph, k)
-    for k in range(4, 10):
-        assert not independent_set_cnf(graph, k)
-        assert not independent_set(graph, k)[0]
+    # max independent set of graph_0 is 3
+    max_set = 3
+    max_checked = 10
+    graph_0 = Graph.from_file("graphs/graph_0.txt")
+    for k in range(max_set + 1):
+        assert independent_set(graph_0, k)[0]
+        assert independent_set_cnf(graph_0, k)
+    for k in range(max_set + 1, max_checked + 1):
+        assert not independent_set(graph_0, k)[0]
+        assert not independent_set_cnf(graph_0, k)
+
+    # max independent set of graph_nikolaus is 2
+    max_set = 2
+    max_checked = 10
+    graph_nikolaustxt = Graph.from_file("graphs/graph_nikolaus.txt")
+    for k in range(max_set + 1):
+        assert independent_set(graph_nikolaustxt, k)[0]
+        assert independent_set_cnf(graph_nikolaustxt, k)
+    for k in range(max_set + 1, max_checked + 1):
+        assert not independent_set(graph_nikolaustxt, k)[0]
+        assert not independent_set_cnf(graph_nikolaustxt, k)
 
     print("independent_set test: all tests passed.")
 
