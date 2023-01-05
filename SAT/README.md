@@ -149,4 +149,5 @@ options:
 
 ```text
 python src/independent_set.py graphs/graph_0.txt 3
+python src/independent_set.py graphs/graph_nikolaus.txt 3 --cnf
 ```
