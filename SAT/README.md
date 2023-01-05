@@ -126,12 +126,12 @@ Well that looks like a pretty house.
 
 ## Find Independent Sets
 
-`independent_set.py` takes a graph and a parameter `k` and finds out if there is and independent set of nodes with size `k` in the given graph.
+`independent_set.py` takes a graph and a parameter `k` and finds out if there is and independent set of nodes with size `k` in the given graph. You can also build CNFs that are equivalent to the Independent Set problem. Those CNFs are saved in the `cnfs` directory and include the original graph name and the parameter `k` (`graphs/graph_nikolaus.txt` -> `cnfs/ind_set_graph_nikolaus_k_2.txt`).
 
 ### Usage
 
 ```text
-usage: independent_set.py [-h] [--test] filename k
+usage: independent_set.py [-h] [--cnf] [--test] filename k
 
 Determines if there is an independent set of k nodes.
 
@@ -141,6 +141,7 @@ positional arguments:
 
 options:
   -h, --help  show this help message and exit
+  --cnf       Builds and saves a cnf for the problem instead of solving it recursively.
   --test      Tests the implementation (no other arguments needed).
 ```
 

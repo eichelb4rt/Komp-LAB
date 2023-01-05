@@ -32,8 +32,11 @@ class Circuit:
     def __init__(self, inputs: list[Variable], gates: list[Gate]) -> None:
         self.inputs = inputs
         self.gates = gates
+        self.size = len(gates)
 
-    def sat_equivalent_cnf(self) -> CNF:
+    def tseitin(self) -> CNF:
+        """Transforms the Circuit into a CNF with new variables for every gate and the relations between them. Does not include the clause that sets the output gate to 1."""
+
         # first len(inputs) variables are reserved for the input variables
         for gate in self.gates:
             operator, out, in1, in2 = gate
@@ -89,13 +92,18 @@ class FullAdder(Circuit):
     size = 2 * HalfAdder.size + 1
 
     def __init__(self, a: Variable, b: Variable, c_in: Variable, start_at: int) -> None:
+        # build first half adder
         half_adder_1 = HalfAdder(a, b, start_at)
-        half_adder_2 = HalfAdder(half_adder_1.sum_bit, c_in, start_at + HalfAdder.size)
+        start_at += HalfAdder.size
+        # build second half adder, connected to first sum bit
+        half_adder_2 = HalfAdder(half_adder_1.sum_bit, c_in, start_at)
+        start_at += HalfAdder.size
         # full adder is made out of: 2 half adders and 1 disjunction
-        gates: list[Gate] = half_adder_1.gates + half_adder_2.gates + [(LogicalOperator.OR, start_at + 2 * HalfAdder.size, half_adder_1.carry_bit, half_adder_2.carry_bit)]
+        gates: list[Gate] = half_adder_1.gates + half_adder_2.gates + [(LogicalOperator.OR, start_at, half_adder_1.carry_bit, half_adder_2.carry_bit)]
         # remember output bits
         self.sum_bit = half_adder_2.sum_bit
-        self.c_out = start_at + 2 * HalfAdder.size
+        # c_out is the result of the last gate (disjunction)
+        self.c_out = start_at
         super().__init__([a, b, c_in], gates)
 
 
@@ -108,17 +116,19 @@ class RCA(Circuit):
 
         # first adder is a half adder
         half_adder = HalfAdder(a[0], b[0], start_at)
+        # 2nd adder starts after half adder
+        start_at += half_adder.size
         # remaining adders are full adders
         full_adders: list[FullAdder] = [None] * (n_bits - 1)
         for i in range(n_bits - 1):
-            # figure out where to start
-            full_adder_start = start_at + HalfAdder.size + i * FullAdder.size
             # connect the carry bits
             c_in = full_adders[i - 1].c_out if i > 0 else half_adder.carry_bit
             # where to read the bit
             input_bit = i + 1
             # build full adders
-            full_adders[i] = FullAdder(a[input_bit], b[input_bit], c_in, full_adder_start)
+            full_adders[i] = FullAdder(a[input_bit], b[input_bit], c_in, start_at)
+            # next adder starts after this adder
+            start_at += full_adders[i].size
 
         # assemble gates
         gates = half_adder.gates + [gate for adder in full_adders for gate in adder.gates]
@@ -128,10 +138,6 @@ class RCA(Circuit):
         self.carry_bit = full_adders[-1].c_out if n_bits > 1 else half_adder.carry_bit
 
         super().__init__(a + b, gates)
-
-    @classmethod
-    def size(cls, n_bits: int) -> int:
-        return HalfAdder.size + (n_bits - 1) * FullAdder.size
 
 
 class CountBitsCircuit(Circuit):
@@ -144,21 +150,22 @@ class CountBitsCircuit(Circuit):
         # add up the input bits with n-bit RCAs
         adders: list[RCA] = [None] * (len(inputs) - 1)
         for i in range(len(inputs) - 1):
-            rca_start = start_at + i * RCA.size(n_bits)
             # first argument: last adder's sum or first number
-            a = adders[i - 1].sum_bits if i > 0 else input_numbers[0]
+            if i == 0:
+                arg_1 = input_numbers[0]
+            else:
+                arg_1 = adders[i - 1].sum_bits
             # second argument: next number
-            b = input_numbers[i + 1]
-            adders[i] = RCA(a, b, n_bits, rca_start)
+            arg_2 = input_numbers[i + 1]
+            adders[i] = RCA(arg_1, arg_2, n_bits, start_at)
+            # next adder starts after this adder
+            start_at += adders[i].size
 
         # assemble gates
         gates = [gate for adder in adders for gate in adder.gates]
 
         # output is the last sum
         self.sum_bits = adders[-1].sum_bits
-
-        # save how many variables we created
-        self.size = RCA.size(n_bits) * (len(inputs) - 1)
 
         # careful! ZERO_BIT was used for padding and is also an input to the circuit
         super().__init__(inputs + [ZERO_BIT], gates)
@@ -183,6 +190,7 @@ def make_bits_and_vars(x: int, n_bits: int, start_at: int) -> tuple[list[int], l
     x_bits = [bool(int(bit)) for bit in reversed(bin(x)[2:])]
     x_vars = pad_right_vars(list(range(start_at, start_at + len(x_bits))), n_bits)
     return x_bits, x_vars
+
 
 def to_number(sum_bits: list[bool]) -> int:
     # lowest bit is at sum_bits[0]
@@ -224,6 +232,8 @@ def main():
         sum_bits = counter.evaluate(list(bits) + [False], counter.sum_bits)
         result = to_number(sum_bits)
         assert result == expected_count, f"{bits} has {result} active bits?"
+
+    print(f"Circuit tests: all tests passed.")
 
 
 if __name__ == "__main__":

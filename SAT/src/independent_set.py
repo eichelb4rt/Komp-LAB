@@ -1,8 +1,11 @@
 import argparse
+from pathlib import Path
+
 from dpll import DPLLSolver
 from graph import Graph, Node
 from circuit import CountBitsCircuit, ZERO_BIT, MAX_RESERVED_VARIABLE
 from cnf import CNF, Clause, Variable
+
 from test import TestAction
 
 
@@ -31,7 +34,7 @@ def independent_set(graph: Graph, k: int) -> tuple[bool, list[Node]]:
     return False, None
 
 
-def independent_set_cnf(graph: Graph, k: int) -> bool:
+def independent_set_cnf(graph: Graph, k: int) -> CNF:
     # map the nodes to variables (1 is reserved for ZERO_BIT)
     to_variable = {node: variable for variable, node in enumerate(graph.nodes, start=MAX_RESERVED_VARIABLE + 1)}
     # encode the edges in the cnf
@@ -46,7 +49,7 @@ def independent_set_cnf(graph: Graph, k: int) -> bool:
     # make a circuit that calculates the number of true variables
     counter = CountBitsCircuit(node_variables, len(k_bits), start_at=max(node_variables) + 1)
     # simulate the gates with clauses
-    counter_clauses = counter.sat_equivalent_cnf().clauses
+    counter_clauses = counter.tseitin().clauses
     # the sum bits should equal the k bits, encode that
     correct_sum_bit_clauses: list[Clause] = [[sum_bit_variable * (1 if k_bit == 1 else -1)] for sum_bit_variable, k_bit in zip(counter.sum_bits, k_bits)]
 
@@ -59,10 +62,7 @@ def independent_set_cnf(graph: Graph, k: int) -> bool:
     # clauses: "don't pick nodes that are connected with an edge", "counter gates", "variable count is k", "ZERO_BITS"
     all_clauses = edge_clauses + counter_clauses + correct_sum_bit_clauses + zero_bit_clauses
     n_clauses = len(all_clauses)
-    cnf = CNF(n_variables, n_clauses, all_clauses)
-    solver = DPLLSolver()
-    satisfiable = solver.solve(cnf)
-    return satisfiable
+    return CNF(n_variables, n_clauses, all_clauses)
 
 
 ################################################################
@@ -71,27 +71,43 @@ def independent_set_cnf(graph: Graph, k: int) -> bool:
 
 
 def test_independent_set():
-    # max independent set of graph_0 is 3
-    max_set = 3
-    max_checked = 10
-    graph_0 = Graph.from_file("graphs/graph_0.txt")
-    for k in range(max_set + 1):
-        assert independent_set(graph_0, k)[0]
-        assert independent_set_cnf(graph_0, k)
-    for k in range(max_set + 1, max_checked + 1):
-        assert not independent_set(graph_0, k)[0]
-        assert not independent_set_cnf(graph_0, k)
+    # file, max independent set, max checked k
+    test_graphs = [
+        ("graphs/graph_0.txt", 3, 10),
+        ("graphs/graph_nikolaus.txt", 2, 10)
+    ]
 
-    # max independent set of graph_nikolaus is 2
-    max_set = 2
-    max_checked = 10
-    graph_nikolaustxt = Graph.from_file("graphs/graph_nikolaus.txt")
-    for k in range(max_set + 1):
-        assert independent_set(graph_nikolaustxt, k)[0]
-        assert independent_set_cnf(graph_nikolaustxt, k)
-    for k in range(max_set + 1, max_checked + 1):
-        assert not independent_set(graph_nikolaustxt, k)[0]
-        assert not independent_set_cnf(graph_nikolaustxt, k)
+    print("Testing recursive function.")
+    # test recursive independent set function
+    for graph_file, max_set, max_checked in test_graphs:
+        graph = Graph.from_file(graph_file)
+        for k in range(max_set + 1):
+            exists, nodes = independent_set(graph, k)
+            assert exists
+        for k in range(max_set + 1, max_checked + 1):
+            exists, nodes = independent_set(graph, k)
+            assert not exists
+
+    # build cnfs
+    print("Building cnfs.")
+    cnfs: list[list[CNF]] = [[] for _ in test_graphs]
+    for test_index, (graph_file, max_set, max_checked) in enumerate(test_graphs):
+        graph = Graph.from_file(graph_file)
+        for k in range(max_checked + 1):
+            cnf = independent_set_cnf(graph, k)
+            cnfs[test_index].append(cnf)
+
+    # solve cnfs and see if they work
+    print("Solving cnfs.")
+    solver = DPLLSolver()
+    for test_index in range(len(test_graphs)):
+        _, max_set, max_checked = test_graphs[test_index]
+        for k in range(max_set + 1):
+            exists = solver.solve(cnfs[test_index][k])
+            assert exists
+        for k in range(max_set + 1, max_checked + 1):
+            exists = solver.solve(cnfs[test_index][k])
+            assert not exists
 
     print("independent_set test: all tests passed.")
 
@@ -108,17 +124,26 @@ def main():
     parser.add_argument("k",
                         type=int,
                         help="Number of independent nodes.")
+    parser.add_argument("--cnf",
+                        action='store_true',
+                        help="Builds and saves a cnf for the problem instead of solving it recursively.")
     parser.add_argument("--test",
                         action=TestAction.build(test_independent_set),
                         help="Tests the implementation (no other arguments needed).")
     args = parser.parse_args()
 
     graph = Graph.from_file(args.filename)
-    possible, node_list = independent_set(graph, args.k)
-    if possible:
-        print(f"There exists and independent node set with size {args.k}: {node_list}")
+    if args.cnf:
+        cnf = independent_set_cnf(graph, args.k)
+        cnf_file = f"cnfs/ind_set_{Path(args.filename).stem}_k_{args.k}.txt"
+        cnf.write(cnf_file)
+        print(f"CNF written to: {cnf_file}")
     else:
-        print(f"There does not exist and independent node et with size {args.k}.")
+        possible, node_list = independent_set(graph, args.k)
+        if possible:
+            print(f"There exists and independent node set with size {args.k}: {node_list}")
+        else:
+            print(f"There does not exist and independent node et with size {args.k}.")
 
 
 if __name__ == "__main__":
