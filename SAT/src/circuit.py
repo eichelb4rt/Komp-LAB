@@ -1,6 +1,7 @@
 from enum import Enum
 import itertools
 from cnf import CNF, Clause, Variable
+from bit_util import pad_left_bits, pad_right_bits, to_bits, to_number
 
 
 ZERO_BIT = 1
@@ -176,25 +177,9 @@ def pad_right_vars(x: list[Variable], to_size: int) -> list[Variable]:
     return x + [ZERO_BIT] * left_space
 
 
-def pad_right_bits(x: list[int], to_size: int) -> list[int]:
-    left_space = to_size - len(x)
-    return x + [False] * left_space
-
-
-def pad_left_bits(x: list[int], to_size: int) -> list[int]:
-    left_space = to_size - len(x)
-    return [False] * left_space + x
-
-
-def make_bits_and_vars(x: int, n_bits: int, start_at: int) -> tuple[list[int], list[Variable]]:
-    x_bits = [bool(int(bit)) for bit in reversed(bin(x)[2:])]
-    x_vars = pad_right_vars(list(range(start_at, start_at + len(x_bits))), n_bits)
-    return x_bits, x_vars
-
-
-def to_number(sum_bits: list[bool]) -> int:
-    # lowest bit is at sum_bits[0]
-    return int("".join([str(int(bit)) for bit in reversed(sum_bits)]), 2)
+def make_vars(bits: list[bool], pad_to: int, start_at: int) -> tuple[list[int], list[Variable]]:
+    x_vars = pad_right_vars(list(range(start_at, start_at + len(bits))), pad_to)
+    return x_vars
 
 
 def main():
@@ -213,8 +198,10 @@ def main():
     for a in range(9):
         for b in range(9):
             # bit representation of a
-            a_bits, a_vars = make_bits_and_vars(a, n_bits, start_at=2)
-            b_bits, b_vars = make_bits_and_vars(b, n_bits, start_at=2 + len(a_bits))
+            a_bits = to_bits(a)
+            a_vars = make_vars(a_bits, n_bits, start_at=2)
+            b_bits = to_bits(b)
+            b_vars = make_vars(b_bits, n_bits, start_at=2 + len(a_bits))
             # make the adder
             adder = RCA(a_vars, b_vars, n_bits, start_at=2 + len(a_bits) + len(b_bits))
             sum_bits = adder.evaluate(pad_right_bits(a_bits, n_bits) + pad_right_bits(b_bits, n_bits), adder.sum_bits)
