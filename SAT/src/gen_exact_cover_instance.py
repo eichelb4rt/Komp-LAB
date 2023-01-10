@@ -27,7 +27,7 @@ def gen_instance(n: int, s_size: int) -> list[list[int]]:
 
     assert s_size <= 2**n, "Subset size can't be greater than 2^n."
 
-    possible_subset_ids = list(range(2**n))
+    possible_subset_ids = list(range(1, 2**n))
     subset_ids = random.sample(possible_subset_ids, s_size)
     return [gen_subset(subset_id) for subset_id in subset_ids]
 

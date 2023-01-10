@@ -179,7 +179,7 @@ python src/independent_set.py graphs/graph_nikolaus.txt 3 --cnf
 ### Encoding
 
 - first line: `n s_size`
-- all lines after: elements of $S$ in list format
+- all lines after: elements of $S$ in list format (no empty lists please)
 - lines that start with \# are ignored
 
 #### Example
@@ -190,7 +190,6 @@ python src/independent_set.py graphs/graph_nikolaus.txt 3 --cnf
 [2, 4]
 [1, 2]
 [2, 3, 4, 5]
-[]
 [2, 3]
 ```
 
@@ -223,3 +222,25 @@ python src/gen_exact_cover_instance.py 10 5 6
 ### Find Exact Cover
 
 `exact_cover.py` takes an integer $n$ and a set $S \subseteq 2^[n]$ and finds out if there is a subset $S' \subseteq S$ that is also a partition of $[n]$.
+
+#### Usage
+
+```text
+usage: exact_cover.py [-h] [--cnf] filename
+
+Computes the exact cover for an Exact Cover instance from a file.
+
+positional arguments:
+  filename    File with the Exact Cover instance.
+
+options:
+  -h, --help  show this help message and exit
+  --cnf       Builds and saves a cnf for the problem instead of solving it recursively.
+```
+
+#### Examples
+
+```text
+python src/exact_cover.py exact_cover_instances/instance_0.txt
+python src/exact_cover.py exact_cover_instances/instance_1.txt --cnf
+```

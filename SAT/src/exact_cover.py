@@ -38,8 +38,7 @@ def exact_cover_bin(n: int, done_elements: int, S: list[int]) -> tuple[bool, lis
     for selected_subset in S:
         # compute all the disjoint sets
         # a subset and another set are disjunct precisely when the conjunction is 0.
-        # now remove all the sets that are not disjoint and also remove the selected set itself (empty set is not disjoint from itself, so this is needed)
-        disjoint_sets = [disjoint_set for disjoint_set in S if not (selected_subset & disjoint_set) and selected_subset != disjoint_set]
+        disjoint_sets = [disjoint_set for disjoint_set in S if not (selected_subset & disjoint_set)]
         # the new done elements are all the elements that are already done and the ones in the selected subsets
         new_done_elements = done_elements | selected_subset
         # compute if there is an exact cover of the remaining elements in the disjoint sets
@@ -91,7 +90,7 @@ def exact_cover_cnf(n: int, S: list[list[int]]) -> CNF:
     for subset1, s_var1 in zip(bit_subsets, S_variables):
         for subset2, s_var2 in zip(bit_subsets, S_variables):
             # if they share an element, they can't both be active
-            if subset1 & subset2 != 0:
+            if subset1 != subset2 and subset1 & subset2 != 0:
                 clauses.append([-s_var1, -s_var2])
 
     # build cnf
@@ -121,7 +120,7 @@ def from_file(filename: str) -> tuple[int, list[list[int]]]:
             # this doesn't really prevent different permutations, but it's not that important anyway
             assert subset not in s, f"Elements in S should be unique (found duplicate: {subset})."
             s.append(subset)
-        assert len(s) == s_size, f"Promised size of S does not match observed size (promised: {s_size}, observed: {len(s)})."
+        assert len(s) == s_size, f"Promised size of S ({s_size}) does not match observed size ({len(s)})."
     return n, s
 
 
@@ -145,7 +144,7 @@ def main():
     n, sets = from_file(args.filename)
     # write the cnf for the instance
     if args.cnf:
-        cnf = exact_cover_cnf(args.n, sets)
+        cnf = exact_cover_cnf(n, sets)
         out_file = f"cnfs/ex_cov_{Path(args.filename).stem}.txt"
         cnf.write(out_file, comment=f"Exact Cover generated CNF. n={n} S={sets}")
     # or just solve it
