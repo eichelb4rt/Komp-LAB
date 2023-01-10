@@ -226,7 +226,7 @@ python src/gen_exact_cover_instance.py 10 5 6
 #### Usage
 
 ```text
-usage: exact_cover.py [-h] [--cnf] filename
+usage: exact_cover.py [-h] [--cnf] [--test] filename
 
 Computes the exact cover for an Exact Cover instance from a file.
 
@@ -236,6 +236,7 @@ positional arguments:
 options:
   -h, --help  show this help message and exit
   --cnf       Builds and saves a cnf for the problem instead of solving it recursively.
+  --test      Tests the implementation (no other arguments needed).
 ```
 
 #### Examples

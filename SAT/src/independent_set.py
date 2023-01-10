@@ -108,7 +108,7 @@ def test_independent_set():
             exists = solver.solve(cnfs[test_index][k])
             assert not exists
 
-    print("independent_set test: all tests passed.")
+    print("Independent set test: all tests passed.")
 
 
 ################################################################

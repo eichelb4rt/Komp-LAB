@@ -1,11 +1,18 @@
 import ast
+import glob
 import argparse
 from io import TextIOWrapper
 from pathlib import Path
 from bit_util import to_bits
 from cnf import CNF, Variable, Clause
+from dpll import DPLLSolver
 
 from test import TestAction
+
+
+################################################################
+# FUNCTIONALITY
+################################################################
 
 
 def exact_cover(n: int, S: list[list[int]]) -> tuple[bool, list[list[int]]]:
@@ -132,6 +139,27 @@ def write_instance(filename: str, n: int, S: list[list[int]]):
         f.write(out_str)
 
 
+################################################################
+# TESTS
+################################################################
+
+
+def test_exact_cover():
+    solver = DPLLSolver()
+    for filename in glob.glob("exact_cover_instances/*.txt"):
+        n, sets = from_file(filename)
+        recursive_result, _ = exact_cover(n, sets)
+        cnf = exact_cover_cnf(n, sets)
+        cnf_result = solver.solve(cnf)
+        assert recursive_result == cnf_result
+    print("Exact cover test: all tests passed.")
+
+
+################################################################
+# MAIN
+################################################################
+
+
 def main():
     parser = argparse.ArgumentParser(description="Computes the exact cover for an Exact Cover instance from a file.")
     parser.add_argument("filename",
@@ -139,6 +167,9 @@ def main():
     parser.add_argument("--cnf",
                         action='store_true',
                         help="Builds and saves a cnf for the problem instead of solving it recursively.")
+    parser.add_argument("--test",
+                        action=TestAction.build(test_exact_cover),
+                        help="Tests the implementation (no other arguments needed).")
     args = parser.parse_args()
 
     n, sets = from_file(args.filename)
