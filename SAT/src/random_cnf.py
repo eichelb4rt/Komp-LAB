@@ -88,22 +88,22 @@ def main():
     parser.add_argument(
         "t",
         type=int,
-        help="Number of CNFs"
+        help="Number of CNFs."
     )
     parser.add_argument(
         "n",
         type=int,
-        help="Number of variables"
+        help="Number of variables."
     )
     parser.add_argument(
         "c",
         type=int,
-        help="Number of clauses"
+        help="Number of clauses."
     )
     parser.add_argument(
         "k",
         type=int,
-        help="Clause width"
+        help="Clause width."
     )
     parser.add_argument(
         "-o",
@@ -111,7 +111,7 @@ def main():
         metavar="output_dir",
         dest="output",
         default="out",
-        help="Directory that the CNFs are written to"
+        help="Directory that the CNFs are written to."
     )
     args = parser.parse_args()
 
@@ -123,6 +123,7 @@ def main():
         sys.stderr.write("CNF cannot have more than 2^n clauses\n")
         sys.exit(1)
 
+    # TODO: include functionality of the shell script and make this prettier
     # make the output directory if not existent
     try:
         os.mkdir(args.output)

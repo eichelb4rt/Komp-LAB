@@ -1,48 +1,70 @@
-import random
-
+import ast
+import argparse
+from io import TextIOWrapper
+from pathlib import Path
 from bit_util import to_bits
 from cnf import CNF, Variable, Clause
 
-
-def exact_cover(n: int, S: list[list[int]]) -> bool:
-    """Does an exact cover S' subset S exist, such that every i in [n] is in exactly 1 set in S'?"""
+from test import TestAction
 
 
-def gen_subset(subset_id: int) -> list[int]:
-    return [i for i, bit in enumerate(to_bits(subset_id), start=1) if bit]
+def exact_cover(n: int, S: list[list[int]]) -> tuple[bool, list[list[int]]]:
+    """Returns True and an exact cover if it exists, False and None otherwise."""
+
+    # convert subsets to bitstrings
+    S_bitstrings = [subset_to_bitstring(subset) for subset in S]
+    # at the start, every element is remaining
+    done_elements = 0
+    # compute a solution with bitstrings and convert it back to a normal solution.
+    possible, solution = exact_cover_bin(n, done_elements, S_bitstrings)
+    if possible:
+        solution = [bitstring_to_subset(bitstring) for bitstring in solution]
+    return possible, solution
 
 
-def gen_instance(n: int, s_size: int) -> list[list[int]]:
-    """Generates a random instance of the Exact Cover problem.
+def exact_cover_bin(n: int, done_elements: int, S: list[int]) -> tuple[bool, list[int]]:
+    """Same as exact cover, but represents subsets and elements as bitstrings (int)."""
 
-    Parameters
-    ----------
-    n : int
-        Number of elements to choose from.
-    s_size : int
-        Size of S.
+    # check if we already have a solution
+    # if all elements are done, we got a solution
+    if done_elements == 2**n - 1:
+        return True, []
+    # if elements are remaining and there are no remaining subsets, there is no solution with these selected elements
+    elif len(S) == 0:
+        return False, None
 
-    Returns
-    -------
-    list[list[int]]
-        S, a subset of 2^[n].
-    """
+    # if there are elements remaining and there are subsets remaining, try to find a solution
+    # compute a solution recursively
+    for selected_subset in S:
+        # compute all the disjoint sets
+        # a subset and another set are disjunct precisely when the conjunction is 0.
+        # now remove all the sets that are not disjoint and also remove the selected set itself (empty set is not disjoint from itself, so this is needed)
+        disjoint_sets = [disjoint_set for disjoint_set in S if not (selected_subset & disjoint_set) and selected_subset != disjoint_set]
+        # the new done elements are all the elements that are already done and the ones in the selected subsets
+        new_done_elements = done_elements | selected_subset
+        # compute if there is an exact cover of the remaining elements in the disjoint sets
+        possible, solution = exact_cover_bin(n, new_done_elements, disjoint_sets)
+        # if there is one, just append the selected subset and it is a solution
+        if possible:
+            return True, solution + [selected_subset]
+    # it's not possible for any of the selected sets until now
+    return False, None
 
-    assert s_size <= 2**n, "Subset size can't be greater than 2^n."
 
-    possible_subset_ids = list(range(1, 2**n))
-    subset_ids = random.sample(possible_subset_ids, s_size)
-    return [gen_subset(subset_id) for subset_id in subset_ids]
-
-
-def subset_to_bits(subset: list[int]) -> int:
+def subset_to_bitstring(subset: list[int]) -> int:
     """Turns a subset into a bitset ([1, 3, 7] -> 1000101)."""
 
     bit_str = 0
-    for m in subset:
+    for element in subset:
         # least significant bit describes if 1 is in set
-        bit_str |= 1 << (m - 1)
+        bit_str |= 1 << (element - 1)
     return bit_str
+
+
+def bitstring_to_subset(subset_bitstr: int) -> list[int]:
+    """Turns a given bitset into a set of integer elements (1000101 -> [1, 3, 7])."""
+
+    return [element for element, bit in enumerate(to_bits(subset_bitstr), start=1) if bit]
 
 
 def exact_cover_cnf(n: int, S: list[list[int]]) -> CNF:
@@ -65,7 +87,7 @@ def exact_cover_cnf(n: int, S: list[list[int]]) -> CNF:
         # 2 => 8 v 9 v 12
         clauses.append([-m] + found_in)
     # encode that we can't pick 2 subsets that share elements
-    bit_subsets: list[int] = [subset_to_bits(subset) for subset in S]
+    bit_subsets: list[int] = [subset_to_bitstring(subset) for subset in S]
     for subset1, s_var1 in zip(bit_subsets, S_variables):
         for subset2, s_var2 in zip(bit_subsets, S_variables):
             # if they share an element, they can't both be active
@@ -78,16 +100,62 @@ def exact_cover_cnf(n: int, S: list[list[int]]) -> CNF:
     return CNF(n_variables, n_clauses, clauses)
 
 
+def skip_comments(f: TextIOWrapper) -> str:
+    while line := f.readline():
+        if line[0] != '#':
+            return line
+    return ""
+
+
+def from_file(filename: str) -> tuple[int, list[list[int]]]:
+    with open(filename, 'r') as f:
+        # get n and the size of s
+        firstline = skip_comments(f)
+        n, s_size = [int(c) for c in firstline.split(" ")]
+        # read S
+        s: list[list[int]] = []
+        while line := skip_comments(f):
+            subset = ast.literal_eval(line)
+            # assert the subsets contain valid numbers
+            assert all([element >= 1 and element <= n for element in subset]), f"Invalid element found in {subset}, n={n}."
+            # this doesn't really prevent different permutations, but it's not that important anyway
+            assert subset not in s, f"Elements in S should be unique (found duplicate: {subset})."
+            s.append(subset)
+        assert len(s) == s_size, f"Promised size of S does not match observed size (promised: {s_size}, observed: {len(s)})."
+    return n, s
+
+
+def write_instance(filename: str, n: int, S: list[list[int]]):
+    with open(filename, 'w') as f:
+        s_size = len(S)
+        out_str = f"{n} {s_size}\n"
+        out_str += "\n".join(map(str, S))
+        f.write(out_str)
+
+
 def main():
-    n = 7
-    s_size = 5
-    n_instances = 10
-    for i in range(n_instances):
-        sets = gen_instance(n, s_size)
-        print(f"Instance {i}:\t{sets}")
-        cnf = exact_cover_cnf(n, sets)
-        out_file = f"cnfs/ex_cov_{i}.txt"
+    parser = argparse.ArgumentParser(description="Computes the exact cover for an Exact Cover instance from a file.")
+    parser.add_argument("filename",
+                        help="File with the Exact Cover instance.")
+    parser.add_argument("--cnf",
+                        action='store_true',
+                        help="Builds and saves a cnf for the problem instead of solving it recursively.")
+    args = parser.parse_args()
+
+    n, sets = from_file(args.filename)
+    # write the cnf for the instance
+    if args.cnf:
+        cnf = exact_cover_cnf(args.n, sets)
+        out_file = f"cnfs/ex_cov_{Path(args.filename).stem}.txt"
         cnf.write(out_file, comment=f"Exact Cover generated CNF. n={n} S={sets}")
+    # or just solve it
+    else:
+        # TODO: make naming of S/sets consistent
+        possible, solution = exact_cover(n, sets)
+        if possible:
+            print(f"Partition does exist: {solution}")
+        else:
+            print(f"Partition does not exist.")
 
 
 if __name__ == "__main__":
