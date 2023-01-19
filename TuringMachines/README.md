@@ -1,5 +1,12 @@
 # A bunch of programs doing stuff with Turing Machines
 
+- [Turing Machine Encoding](#turing-machine-encoding)
+- [Simulate Turing Machine](#simulate-turing-machine)
+- [Approximate Runtime](#approximate-runtime)
+- [Compress k-tape Turing Machines](#compress-k-tape-turing-machines)
+- [Test](#test)
+- [Generate Inputs](#generate-inputs)
+
 ## Turing Machine Encoding
 
 - first line: `n_states n_tapes alphabet_size n_transitions`
