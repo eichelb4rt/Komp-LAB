@@ -23,6 +23,10 @@ Edge = tuple[Node, Node]
 AdjacencyList = dict[Node, list[Node]]
 
 
+def reverse_edge(edge: Edge) -> Edge:
+    return (edge[1], edge[0])
+
+
 class Graph:
     def __init__(self, nodes: set[Node], neighbours: AdjacencyList):
         self.nodes = nodes
@@ -98,6 +102,15 @@ class Graph:
             neighbours[edge[0]].append(edge[1])
             neighbours[edge[1]].append(edge[0])
         return cls(observed_nodes, neighbours)
+
+    def write(self, filename: str):
+        edges = self.get_edges()
+        out_str = f"{len(self.nodes)} {len(edges)}\n"
+        out_str += ", ".join(map(str, self.nodes)) + "\n"
+        for from_node, to_node in edges:
+            out_str += f"{from_node} -- {to_node}\n"
+        with open(filename, 'w') as f:
+            f.write(out_str)
 
     def dot_encode(self) -> str:
         dot_str = "strict graph {\n"
