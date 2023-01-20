@@ -1,4 +1,3 @@
-import os
 import sys
 import random
 import argparse
@@ -105,14 +104,6 @@ def main():
         type=int,
         help="Clause width."
     )
-    parser.add_argument(
-        "-o",
-        "--output",
-        metavar="output_dir",
-        dest="output",
-        default="out",
-        help="Directory that the CNFs are written to."
-    )
     args = parser.parse_args()
 
     # check if arguments are viable
@@ -123,20 +114,11 @@ def main():
         sys.stderr.write("CNF cannot have more than 2^n clauses\n")
         sys.exit(1)
 
-    # TODO: include functionality of the shell script and make this prettier
-    # make the output directory if not existent
-    try:
-        os.mkdir(args.output)
-    except FileExistsError:
-        pass
-    except Exception:
-        print(f"Unable to make directory: {args.output}")
-
     # write t random CNFs
     for i in range(args.t):
         cnf = gen_cnf(args.n, args.c, args.k)   # generate cnf
         # e.g.: out/random_cnf_0.txts
-        cnf.write(f"{args.output}/random_cnf_{i}.txt", comment="random cnf")
+        cnf.write(f"inputs/cnf_{i}.random.txt", comment="random cnf")
 
 
 if __name__ == "__main__":

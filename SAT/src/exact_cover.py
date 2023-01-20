@@ -146,7 +146,7 @@ def write_instance(filename: str, n: int, S: list[list[int]]):
 
 def test_exact_cover():
     solver = DPLLSolver()
-    for filename in glob.glob("exact_cover_instances/*.txt"):
+    for filename in glob.glob("inputs/EC_*.txt"):
         n, sets = from_file(filename)
         recursive_result, _ = exact_cover(n, sets)
         cnf = exact_cover_cnf(n, sets)
@@ -176,7 +176,7 @@ def main():
     # write the cnf for the instance
     if args.cnf:
         cnf = exact_cover_cnf(n, sets)
-        out_file = f"cnfs/ex_cov_{Path(args.filename).stem}.txt"
+        out_file = f"inputs/cnf_{Path(args.filename).stem}.txt"
         cnf.write(out_file, comment=f"Exact Cover generated CNF. n={n} S={sets}")
     # or just solve it
     else:

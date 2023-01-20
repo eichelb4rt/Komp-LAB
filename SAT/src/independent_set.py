@@ -134,7 +134,7 @@ def main():
     graph = Graph.from_file(args.filename)
     if args.cnf:
         cnf = independent_set_cnf(graph, args.k)
-        cnf_file = f"cnfs/ind_set_{Path(args.filename).stem}_k_{args.k}.txt"
+        cnf_file = f"inputs/cnf_independent_set_k_{args.k}_{Path(args.filename).stem}.txt"
         cnf.write(cnf_file)
         print(f"CNF written to: {cnf_file}")
     else:

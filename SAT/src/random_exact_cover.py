@@ -40,7 +40,7 @@ def main():
         help="Number of generated instances."
     )
     parser.add_argument(
-        "n",
+        "n_vars",
         type=int,
         help="Number of variables."
     )
@@ -51,11 +51,10 @@ def main():
     )
     args = parser.parse_args()
 
-    # TODO: stuff with deleting directory and stuff
     for i in range(args.n_instances):
-        sets = gen_instance(args.n, args.s_size)
-        out_file = f"exact_cover_instances/instance_{i}.txt"
-        write_instance(out_file, args.n, sets)
+        sets = gen_instance(args.n_vars, args.s_size)
+        out_file = f"inputs/exact_cover_{i}.random.txt"
+        write_instance(out_file, args.n_vars, sets)
 
 
 if __name__ == "__main__":

@@ -22,25 +22,23 @@ We use the [DIMACS-Encoding](http://beyondnp.org/static/media/uploads/docs/satfo
 
 ### Generate random CNFs
 
-`random_cnf.py` generates random cnfs.
+`random_cnf.py` generates random cnfs. Outputs files are saved in the `inputs` directory and the file names are of the form `inputs/cnf_*.random.txt`.
 
 #### Usage
 
 ```text
-usage: random_cnf.py [-h] [-o output_dir] t n c k
+usage: random_cnf.py [-h] t n c k
 
 Generates random CNFs.
 
 positional arguments:
-  t                     Number of CNFs
-  n                     Number of variables
-  c                     Number of clauses
-  k                     Clause width
+  t           Number of CNFs.
+  n           Number of variables.
+  c           Number of clauses.
+  k           Clause width.
 
 options:
-  -h, --help            show this help message and exit
-  -o output_dir, --output output_dir
-                        Directory that the CNFs are written to
+  -h, --help  show this help message and exit
 ```
 
 #### Examples
@@ -74,7 +72,7 @@ options:
 
 ```text
 python src/dpll.py random_cnfs/random_cnf_0.txt
-python src/dpll.py cnfs/unsatisfiable_cnf.txt
+python src/dpll.py inputs/cnf_unsatisfiable.txt
 ```
 
 ## Graphs
@@ -107,9 +105,11 @@ This is the house of saint nikolaus.
 3 -- 5
 ```
 
+<!-- TODO: Generate random Graphs -->
+
 ### Convert to DOT Encoding
 
-`graph.py` reads a graph from a file and converts it into DOT encoding. The DOT encoding is saved in the `dot_encodings` directory (e.g. `graphs/graph_0.txt` -> `dot_encodings/graph_0.dot`).
+`graph.py` reads a graph from a file and converts it into DOT encoding. The DOT encoding is saved in the `dot_encodings` directory (e.g. `inputs/graph_0.txt` -> `dot_encodings/graph_0.dot`).
 
 #### Usage
 
@@ -129,12 +129,12 @@ options:
 #### Examples
 
 ```text
-python src/graph.py graphs/graph_0.txt
+python src/graph.py inputs/graph_0.txt
 ```
 
 ### Render Graphs
 
-`render.sh` reads a graph from a file and renders it. The rendered image is saved in `.png` format in the `renders` directory (e.g. `graphs/graph_0.txt` -> `renders/render_graph_0.png`).
+`render.sh` reads a graph from a file and renders it. The rendered image is saved in `.png` format in the `renders` directory (e.g. `inputs/graph_0.txt` -> `renders/render_graph_0.png`).
 
 #### Examples
 
@@ -148,7 +148,7 @@ Well that looks like a pretty house.
 
 ### Find Independent Sets
 
-`independent_set.py` takes a graph and a parameter $k$ and finds out if there is and independent set of nodes with size $k$ in the given graph. You can also build CNFs that are equivalent to the Independent Set problem. Those CNFs are saved in the `cnfs` directory and include the original graph name and the parameter $k$ (`graphs/graph_nikolaus.txt` -> `cnfs/ind_set_graph_nikolaus_k_2.txt`).
+`independent_set.py` takes a graph and a parameter $k$ and finds out if there is and independent set of nodes with size $k$ in the given graph. You can also build CNFs that are equivalent to the Independent Set problem. Those CNFs are saved in the `inputs` directory and include the original graph name and the parameter $k$ (`inputs/graph_nikolaus.txt` -> `inputs/cnf_independent_set_k_2_graph_nikolaus.txt`).
 
 #### Usage
 
@@ -170,8 +170,8 @@ options:
 #### Examples
 
 ```text
-python src/independent_set.py graphs/graph_0.txt 3
-python src/independent_set.py graphs/graph_nikolaus.txt 3 --cnf
+python src/independent_set.py inputs/graph_0.txt 3
+python src/independent_set.py inputs/graph_nikolaus.txt 3 --cnf
 ```
 
 ## Exact Cover
@@ -195,18 +195,18 @@ python src/independent_set.py graphs/graph_nikolaus.txt 3 --cnf
 
 ### Generate Random Instances
 
-`gen_exact_cover_instance.py` generates random instances of exact cover.
+`random_exact_cover.py` generates random instances of exact cover. Outputs files are saved in the `inputs` directory and the file names are of the form `inputs/exact_cover_*.random.txt`.
 
 #### Usage
 
 ```text
-usage: gen_exact_cover_instance.py [-h] n_instances n s_size
+usage: random_exact_cover.py [-h] n_instances n_vars s_size
 
 Generates random instaces of Exact Cover.
 
 positional arguments:
   n_instances  Number of generated instances.
-  n            Number of variables.
+  n_vars       Number of variables.
   s_size       Size of generated S.
 
 options:
@@ -216,12 +216,12 @@ options:
 #### Examples
 
 ```text
-python src/gen_exact_cover_instance.py 10 5 6
+python src/random_exact_cover.py 10 5 6
 ```
 
 ### Find Exact Cover
 
-`exact_cover.py` takes an integer $n$ and a set $S \subseteq 2^[n]$ and finds out if there is a subset $S' \subseteq S$ that is also a partition of $[n]$.
+`exact_cover.py` takes an integer $n$ and a set $S \subseteq 2^[n]$ and finds out if there is a subset $S' \subseteq S$ that is also a partition of $[n]$. You can also build CNFs that are equivalent to the Exact Cover problem. Those CNFs are saved in the `inputs` directory and include the original instance name (`inputs/exact_cover_0.txt` -> `inputs/cnf_exact_cover_0.txt`).
 
 #### Usage
 
@@ -242,6 +242,6 @@ options:
 #### Examples
 
 ```text
-python src/exact_cover.py exact_cover_instances/instance_0.txt
-python src/exact_cover.py exact_cover_instances/instance_1.txt --cnf
+python src/exact_cover.py inputs/exact_cover_0.txt
+python src/exact_cover.py inputs/exact_cover_0.txt --cnf
 ```

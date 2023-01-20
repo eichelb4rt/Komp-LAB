@@ -57,10 +57,14 @@ def gen_graph_connected(n_nodes: int, n_edges: int) -> Graph:
 
 def main():
     # TODO: interface
+    N_INSTANCES = 10
     N_NODES = 10
     N_EDGES = 20
     random_graph = gen_graph_connected(N_NODES, N_EDGES)
-    random_graph.write("random_graph.txt")
+    for i in range(N_INSTANCES):
+        random_graph = gen_graph_connected(N_NODES, N_EDGES)
+        out_file = f"inputs/graph_{i}.random.txt"
+        random_graph.write(out_file)
 
 
 if __name__ == "__main__":
