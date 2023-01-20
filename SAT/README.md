@@ -6,6 +6,7 @@
   - [DPLL](#dpll)
 - [Graphs](#graphs)
   - [Encoding](#encoding-1)
+  - [Generate Random Graphs](#generate-random-graphs)
   - [Convert to DOT Encoding](#convert-to-dot-encoding)
   - [Render Graphs](#render-graphs)
   - [Find Independent Sets](#find-independent-sets)
@@ -105,7 +106,28 @@ This is the house of saint nikolaus.
 3 -- 5
 ```
 
-<!-- TODO: Generate random Graphs -->
+### Generate Random Graphs
+
+`random_graph.py` generates random graphs. Outputs files are saved in the `inputs` directory and the file names are of the form `inputs/graph_*.random.txt`.
+
+#### Usage
+
+```text
+usage: random_graph.py [-h] [-c] n_graphs n_nodes n_edges
+
+Generates random graphs.
+
+positional arguments:
+  n_graphs         Number of graphs generated.
+  n_nodes          Number of nodes in the generated graph.
+  n_edges          Number of edges in the generated graph.
+
+options:
+  -h, --help       show this help message and exit
+  -c, --connected  Only generate connected graphs.
+```
+
+#### Examples
 
 ### Convert to DOT Encoding
 

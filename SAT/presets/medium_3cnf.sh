@@ -1,2 +1,1 @@
-cd $(dirname "$0")
-bash ../gen_cnfs.sh 50 10 50 3
+python src/random_cnf.py 10 10 50 3

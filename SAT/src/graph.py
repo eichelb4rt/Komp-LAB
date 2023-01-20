@@ -101,7 +101,7 @@ class Graph:
             # edge is undirected
             neighbours[edge[0]].append(edge[1])
             neighbours[edge[1]].append(edge[0])
-        return cls(observed_nodes, neighbours)
+        return cls(nodes, neighbours)
 
     def write(self, filename: str):
         edges = self.get_edges()

@@ -1,3 +1,4 @@
+import argparse
 import random
 from graph import Graph, Node, Edge, reverse_edge
 
@@ -15,7 +16,7 @@ def gen_graph(n_nodes: int, n_edges: int) -> Graph:
     assert n_edges <= n_nodes * (n_nodes - 1) // 2, "A graph cannot have more than n_nodes*(n_nodes)/2 edges."
     # build some edges
     edges: set[Node] = set()
-    for _ in range(n_edges - n_nodes + 1):
+    for _ in range(n_edges):
         # generate an edge that is not in the graph yet
         new_edge = gen_edge(n_nodes)
         while new_edge in edges or reverse_edge(new_edge) in edges:
@@ -56,13 +57,26 @@ def gen_graph_connected(n_nodes: int, n_edges: int) -> Graph:
 
 
 def main():
-    # TODO: interface
-    N_INSTANCES = 10
-    N_NODES = 10
-    N_EDGES = 20
-    random_graph = gen_graph_connected(N_NODES, N_EDGES)
-    for i in range(N_INSTANCES):
-        random_graph = gen_graph_connected(N_NODES, N_EDGES)
+    parser = argparse.ArgumentParser(description="Generates random graphs.")
+    parser.add_argument("n_graphs",
+                        type=int,
+                        help="Number of graphs generated.")
+    parser.add_argument("n_nodes",
+                        type=int,
+                        help="Number of nodes in the generated graph.")
+    parser.add_argument("n_edges",
+                        type=int,
+                        help="Number of edges in the generated graph.")
+    parser.add_argument("-c", "--connected",
+                        action='store_true',
+                        help="Only generate connected graphs.")
+    args = parser.parse_args()
+
+    for i in range(args.n_graphs):
+        if args.connected:
+            random_graph = gen_graph_connected(args.n_nodes, args.n_edges)
+        else:
+            random_graph = gen_graph(args.n_nodes, args.n_edges)
         out_file = f"inputs/graph_{i}.random.txt"
         random_graph.write(out_file)
 
