@@ -267,3 +267,5 @@ options:
 python src/exact_cover.py inputs/exact_cover_0.txt
 python src/exact_cover.py inputs/exact_cover_0.txt --cnf
 ```
+
+<!-- TODO: HAMILTONIAN CYCLES -->
