@@ -27,9 +27,10 @@ def find_prime(min: int, max: int) -> int:
 
 
 def main():
-    power = 100
-    MIN = 10**power
-    MAX = 10**(power + 1) - 1
+    n_digits = 100
+    base = 10
+    MIN = base**n_digits
+    MAX = base**(n_digits + 1) - 1
     while True:
         print(find_prime(MIN, MAX))
 
