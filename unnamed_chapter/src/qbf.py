@@ -1,6 +1,6 @@
 import argparse
 from enum import Enum
-from typing import Self
+from typing import Optional, Self
 from io import TextIOWrapper
 
 
@@ -37,14 +37,42 @@ class QBF:
             previous_quantor, previous_vars = prefix[i - 1]
             assert current_quantor != previous_quantor, f"Quantors have to alternate! Quantor {i} and {i - 1} are the same ({current_quantor})."
 
-    @classmethod
-    def from_file(cls, filename: str) -> Self:
-        """Reads a QDIMACS encoded CNF from a file.
+    def write(self, filename: str, comment: Optional[str] = None):
+        """Writes the QBF to a file with QDIMACS encoding.
 
         Parameters
         ----------
         filename : str
-            File with QDIMACS encoded CNF.
+            File that the QDIMACS encoded QBF is written to.
+        comment : str, optional
+            A comment that is written into the first line of the file.
+        """
+
+        dimacs_str = ""
+        # maybe write a comment in the first line
+        if comment is not None:
+            dimacs_str += f"c {comment}\n"
+        # specify n and c in first line
+        dimacs_str += f"p cnf {self.n} {self.c}\n"
+        # add prefix
+        for quantor, variables in self.prefix:
+            dimacs_str += f"{str(quantor.value).lower()} {' '.join([str(variable) for variable in variables])} 0\n"
+        # add clauses
+        for clause in self.clauses:
+            # all the literals separated by space
+            dimacs_str += " ".join([str(literal) for literal in clause]) + " 0\n"
+
+        with open(filename, 'w') as f:
+            f.write(dimacs_str)
+
+    @classmethod
+    def from_file(cls, filename: str) -> Self:
+        """Reads a QDIMACS encoded QBF from a file.
+
+        Parameters
+        ----------
+        filename : str
+            File with QDIMACS encoded QBF.
         """
 
         with open(filename, 'r') as f:
@@ -116,8 +144,8 @@ def main():
         help="Input file where QDIMACS notation of a formula is stored."
     )
     args = parser.parse_args()
-    cnf = QBF.from_file(args.input)
-    print(cnf)
+    qbf = QBF.from_file(args.input)
+    print(qbf)
 
 
 if __name__ == "__main__":
