@@ -233,20 +233,20 @@ class QDPLLSolver:
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Checks if a QBF is satisfiable.")
+    parser = argparse.ArgumentParser(description="Checks if a QBF is true (satisfiable).")
     parser.add_argument(
         "input",
         type=str,
-        help="Input file where DIMACS encoding of a formula is stored."
+        help="Input file where QDIMACS encoding of a formula is stored."
     )
     args = parser.parse_args()
     qbf = QBF.from_file(args.input)
     solver = QDPLLSolver()
     satisfiable = solver.solve(qbf)
     if satisfiable:
-        print(f"satisfiable, assignments: {solver.assignments_view}")
+        print(f"true (satisfiable), assignments: {solver.assignments_view}")
     else:
-        print("unsatisfiable")
+        print("false (unsatisfiable)")
 
 
 if __name__ == "__main__":
