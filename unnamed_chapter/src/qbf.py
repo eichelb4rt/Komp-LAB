@@ -26,9 +26,9 @@ def skip_comments(f: TextIOWrapper) -> str:
 
 
 class QBF:
-    def __init__(self, n: int, c: int, prefix: list[QuantifiedVariables], clauses: list[Clause]) -> None:
-        self.n = n
-        self.c = c
+    def __init__(self, n_vars: int, n_clauses: int, prefix: list[QuantifiedVariables], clauses: list[Clause]) -> None:
+        self.n_vars = n_vars
+        self.n_clauses = n_clauses
         self.prefix = prefix
         self.clauses = clauses
         # the quantifiers have to alternate
@@ -36,6 +36,19 @@ class QBF:
             current_quantor, current_vars = prefix[i]
             previous_quantor, previous_vars = prefix[i - 1]
             assert current_quantor != previous_quantor, f"Quantors have to alternate! Quantor {i} and {i - 1} are the same ({current_quantor})."
+        # save in which block each variable is
+        self.block_position: dict[Variable, int] = {variable: i for i, (quantor, variables) in enumerate(prefix) for variable in variables}
+
+    def get_quantor(self, variable: Variable) -> Quantor:
+        """Gets the quantor in which the variable was bound."""
+
+        quantor, _ = self.prefix[self.block_position[variable]]
+        return quantor
+
+    def is_bound_after(self, variable_after: Variable, variable_before: Variable) -> bool:
+        """Returns if `variable_after` is bound in a quantor block that is further to the right than the one of `variable_before`."""
+
+        return self.block_position[variable_after] > self.block_position[variable_before]
 
     def write(self, filename: str, comment: Optional[str] = None):
         """Writes the QBF to a file with QDIMACS encoding.
@@ -53,7 +66,7 @@ class QBF:
         if comment is not None:
             dimacs_str += f"c {comment}\n"
         # specify n and c in first line
-        dimacs_str += f"p cnf {self.n} {self.c}\n"
+        dimacs_str += f"p cnf {self.n_vars} {self.n_clauses}\n"
         # add prefix
         for quantor, variables in self.prefix:
             dimacs_str += f"{str(quantor.value).lower()} {' '.join([str(variable) for variable in variables])} 0\n"
