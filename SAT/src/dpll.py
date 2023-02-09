@@ -16,7 +16,7 @@ class DPLLSolver:
         """Checks if a CNF is satisfiable."""
 
         self.assignments_view = []
-        self.assignments = [None] * cnf.n
+        self.assignments = [None] * cnf.n_vars
         self.original_formula = cnf
         return self.is_satisfiable()
 

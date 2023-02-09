@@ -82,6 +82,11 @@ def gen_clause(n: int, k: int) -> Clause:
     return literals
 
 
+def all_variables_used(cnf: CNF) -> bool:
+    used_variables: set[Variable] = {abs(literal) for clause in cnf.clauses for literal in clause}
+    return len(used_variables) == cnf.n_vars
+
+
 def main():
     parser = argparse.ArgumentParser(description="Generates random CNFs.")
     parser.add_argument(
@@ -116,7 +121,11 @@ def main():
 
     # write t random CNFs
     for i in range(args.t):
-        cnf = gen_cnf(args.n, args.c, args.k)   # generate cnf
+        cnf = gen_cnf(args.n, args.c, args.k)
+        # maybe not all variables were used? because of not enough clauses and stuff
+        while not all_variables_used(cnf):
+            print(f"run {i}: not all variables used, trying again.")
+            cnf = gen_cnf(args.n, args.c, args.k)
         # e.g.: out/random_cnf_0.txts
         cnf.write(f"inputs/cnf_{i}.random.txt", comment="random cnf")
 

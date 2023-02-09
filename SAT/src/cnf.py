@@ -33,9 +33,9 @@ def skip_comments(f: TextIOWrapper) -> str:
 
 
 class CNF:
-    def __init__(self, n: int, c: int, clauses: list[Clause]):
-        self.n = n
-        self.c = c
+    def __init__(self, n_vars: int, n_clauses: int, clauses: list[Clause]):
+        self.n_vars = n_vars
+        self.n_clauses = n_clauses
         self.clauses = clauses
 
     def __repr__(self) -> str:
@@ -57,7 +57,7 @@ class CNF:
         if comment is not None:
             dimacs_str += f"c {comment}\n"
         # specify n and c in first line
-        dimacs_str += f"p cnf {self.n} {self.c}\n"
+        dimacs_str += f"p cnf {self.n_vars} {self.n_clauses}\n"
         for clause in self.clauses:
             # all the literals separated by space
             dimacs_str += " ".join([str(literal) for literal in clause]) + " 0\n"

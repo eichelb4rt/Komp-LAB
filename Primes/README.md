@@ -33,7 +33,7 @@ python src/miller_rabin.py --test
 
 ## Generate Primes
 
-Generate some primes! They're cool. I'll give you as many as i want, don't care if they repeat.
+`gen_primes.py`: Generate some primes! They're cool. I'll give you as many as i want, don't care if they repeat.
 
 ### Usage
 
