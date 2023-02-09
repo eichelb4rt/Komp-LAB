@@ -1,9 +1,11 @@
+import argparse
 import random
+import sys
 import numpy as np
 from qbf import QBF, Clause, Variable, Literal, Quantor, QuantifiedVariables
 
 
-def gen_qbf_chen_interian(n_clauses: int, clause_widths: tuple[int], prefix_widths: tuple[int]) -> QBF:
+def gen_qbf_chen_interian(n_clauses: int, prefix_widths: tuple[int], clause_widths: tuple[int]) -> QBF:
     """Generates a QBF with the Chen-Interian model.
 
     Parameters
@@ -30,7 +32,7 @@ def gen_qbf_chen_interian(n_clauses: int, clause_widths: tuple[int], prefix_widt
     already_added = 0
     for i, prefix_width in enumerate(prefix_widths):
         # quantor on the very right is E w.l.o.g. (?)
-        quantor = Quantor.E if (n_vars - i) % 2 == 0 else Quantor.A
+        quantor = Quantor.E if (n_vars - i) % 2 == 1 else Quantor.A
         quantified_vars = list(range(already_added + 1, already_added + prefix_width + 1))
         prefix[i] = (quantor, quantified_vars)
         already_added += prefix_width
@@ -87,9 +89,61 @@ def gen_clause(prefix: list[QuantifiedVariables], clause_widths: tuple[int]) -> 
     return signs * variables
 
 
+def all_variables_used(qbf: QBF) -> bool:
+    used_variables: set[Variable] = {abs(literal) for clause in qbf.clauses for literal in clause}
+    return len(used_variables) == qbf.n_vars
+
+
 def main():
-    qbf = gen_qbf_chen_interian(10, (2, 3), (4, 5))
-    print(qbf)
+    parser = argparse.ArgumentParser(description="Generates random QBFs.")
+    parser.add_argument(
+        "n_qbfs",
+        type=int,
+        help="Number of QBFs."
+    )
+    parser.add_argument(
+        "n_clauses",
+        type=int,
+        help="Number of clauses."
+    )
+    parser.add_argument(
+        "-p",
+        "--prefix",
+        nargs="+",
+        type=int,
+        help="Number of variables in each prefix."
+    )
+    parser.add_argument(
+        "-w",
+        "--width",
+        nargs="+",
+        type=int,
+        help="Number of variables contained from each quantor block in each clause."
+    )
+    args = parser.parse_args()
+
+    # check if arguments are viable
+    if len(args.prefix) != len(args.width):
+        sys.stderr.write("Prefix and widths don't align\n")
+        sys.exit(1)
+    total_n_vars = sum(args.prefix)
+    total_width = sum(args.width)
+    if total_width > total_n_vars:
+        sys.stderr.write("Clauses cannot be wider than the number of variables\n")    # assuming there aren"t any tautologies
+        sys.exit(1)
+    if args.n_clauses > 2**total_n_vars:
+        sys.stderr.write("CNF cannot have more than 2^n clauses\n")
+        sys.exit(1)
+
+    # write t random CNFs
+    for i in range(args.n_qbfs):
+        qbf = gen_qbf_chen_interian(args.n_clauses, tuple(args.prefix), tuple(args.width))
+        while not all_variables_used(qbf):
+            print(f"run {i}: not all variables used, trying again.")
+            qbf = gen_qbf_chen_interian(args.n_clauses, tuple(args.prefix), tuple(args.width))
+        # e.g.: out/random_cnf_0.txts
+        qbf.write(f"qdimacs/qbf_{i}.random.txt", comment="random qbf")
+    print(f"Successfully generated {args.n_qbfs} QBFs.")
 
 
 if __name__ == "__main__":

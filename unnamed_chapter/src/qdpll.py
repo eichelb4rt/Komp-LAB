@@ -201,7 +201,7 @@ class QDPLLSolver:
                 continue
             # we can now assume that all of the literals are universal (because the potential unit literal is the only existential one in the clause)
             # if there's any unassigned universal literal in the clause that is unassigned and comes before the potential unit literal, then the literal is not unit
-            if not self.qbf.is_bound_after(literal, potential_unit_literal):
+            if not self.qbf.is_bound_after(abs(literal), abs(potential_unit_literal)):
                 return None
         return potential_unit_literal
 
