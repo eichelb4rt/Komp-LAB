@@ -1,4 +1,5 @@
 import random
+import argparse
 
 from miller_rabin import miller_rabin
 
@@ -27,10 +28,24 @@ def find_prime(min: int, max: int) -> int:
 
 
 def main():
-    n_digits = 100
-    base = 10
-    MIN = base**n_digits
-    MAX = base**(n_digits + 1) - 1
+    parser = argparse.ArgumentParser(description="Generates primes with a constant length in some base.")
+    parser.add_argument(
+        "-p",
+        "--base",
+        type=int,
+        default=10,
+        help="Base in which the number of digits is constant."
+    )
+    parser.add_argument(
+        "-d",
+        "--digits",
+        type=int,
+        default=100,
+        help="Number of digits in the given base."
+    )
+    args = parser.parse_args()
+    MIN = args.base**args.digits
+    MAX = args.base**(args.digits + 1) - 1
     while True:
         print(find_prime(MIN, MAX))
 
