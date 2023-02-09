@@ -173,6 +173,9 @@ def main():
     args = parser.parse_args()
 
     n, sets = from_file(args.filename)
+    # if there is the empty set in the sets, then remove it (the empty set is very annoying here)
+    if [] in sets:
+        sets = [subset for subset in sets if subset != []]
     # write the cnf for the instance
     if args.cnf:
         cnf = exact_cover_cnf(n, sets)
