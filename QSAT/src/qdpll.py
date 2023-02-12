@@ -246,6 +246,16 @@ def test_dpll():
         ("qdimacs/qbf_7.txt", False),
         ("qdimacs/qbf_8.txt", False),
         ("qdimacs/qbf_9.txt", True),
+        ("qdimacs/qbf_10.txt", True),
+        ("qdimacs/qbf_11.txt", True),
+        ("qdimacs/qbf_12.txt", True),
+        ("qdimacs/qbf_13.txt", True),
+        ("qdimacs/qbf_14.txt", True),
+        ("qdimacs/qbf_15.txt", False),
+        ("qdimacs/qbf_16.txt", True),
+        ("qdimacs/qbf_17.txt", False),
+        ("qdimacs/qbf_18.txt", False),
+        ("qdimacs/qbf_19.txt", False),
     ]
     solver = QDPLLSolver()
     for test_file, expected_result in test_cases:

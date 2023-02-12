@@ -5,7 +5,7 @@ import numpy as np
 from qbf import QBF, Clause, Variable, Literal, Quantor, QuantifiedVariables
 
 
-def gen_qbf_chen_interian(n_clauses: int, prefix_widths: tuple[int], clause_widths: tuple[int]) -> QBF:
+def gen_qbf_chen_interian(n_clauses: int, prefix_widths: tuple[int], clause_widths: tuple[int], inner_most: Quantor = Quantor.E) -> QBF:
     """Generates a QBF with the Chen-Interian model.
 
     Parameters
@@ -30,9 +30,10 @@ def gen_qbf_chen_interian(n_clauses: int, prefix_widths: tuple[int], clause_widt
     # build the prefix
     prefix: list[QuantifiedVariables] = [None] * len(prefix_widths)
     already_added = 0
+    even_quantor = Quantor.A if inner_most == Quantor.E else Quantor.E
     for i, prefix_width in enumerate(prefix_widths):
         # quantor on the very right is E w.l.o.g. (?)
-        quantor = Quantor.E if (n_vars - i) % 2 == 1 else Quantor.A
+        quantor = inner_most if (n_vars - i) % 2 == 1 else even_quantor
         quantified_vars = list(range(already_added + 1, already_added + prefix_width + 1))
         prefix[i] = (quantor, quantified_vars)
         already_added += prefix_width
@@ -111,6 +112,7 @@ def main():
         "--prefix",
         nargs="+",
         type=int,
+        required=True,
         help="Number of variables in each prefix."
     )
     parser.add_argument(
@@ -118,11 +120,18 @@ def main():
         "--width",
         nargs="+",
         type=int,
+        required=True,
         help="Number of variables contained from each quantor block in each clause."
     )
+    parser.add_argument(
+        "-i",
+        "--innermost",
+        metavar="Q",
+        type=str,
+        default="E",
+        help="Type of inner most quantor. Can be E or A."
+    )
     args = parser.parse_args()
-    
-    # TODO: start with E or A parameter
 
     # check if arguments are viable
     if len(args.prefix) != len(args.width):
@@ -136,13 +145,18 @@ def main():
     if args.n_clauses > 2**total_n_vars:
         sys.stderr.write("CNF cannot have more than 2^n clauses\n")
         sys.exit(1)
+    inner_most_str: str = args.innermost.upper()
+    if inner_most_str not in ['E', 'A']:
+        sys.stderr.write(f"Unknown quantor: {inner_most_str}\n")
+        sys.exit(1)
+    inner_most = Quantor(inner_most_str)
 
     # write t random CNFs
     for i in range(args.n_qbfs):
-        qbf = gen_qbf_chen_interian(args.n_clauses, tuple(args.prefix), tuple(args.width))
+        qbf = gen_qbf_chen_interian(args.n_clauses, tuple(args.prefix), tuple(args.width), inner_most=inner_most)
         while not all_variables_used(qbf):
             print(f"run {i}: not all variables used, trying again.")
-            qbf = gen_qbf_chen_interian(args.n_clauses, tuple(args.prefix), tuple(args.width))
+            qbf = gen_qbf_chen_interian(args.n_clauses, tuple(args.prefix), tuple(args.width), inner_most=inner_most)
         # e.g.: out/random_cnf_0.txts
         qbf.write(f"qdimacs/qbf_{i}.random.txt", comment="random qbf")
     print(f"Successfully generated {args.n_qbfs} QBFs.")

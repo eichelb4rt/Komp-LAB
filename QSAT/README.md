@@ -9,7 +9,7 @@ Here we play around with generating and solving QBFs.
 ### Usage
 
 ```text
-usage: gen_qbf.py [-h] [-p PREFIX [PREFIX ...]] [-w WIDTH [WIDTH ...]] n_qbfs n_clauses
+usage: gen_qbf.py [-h] -p PREFIX [PREFIX ...] -w WIDTH [WIDTH ...] [-i Q] n_qbfs n_clauses
 
 Generates random QBFs.
 
@@ -23,18 +23,19 @@ options:
                         Number of variables in each prefix.
   -w WIDTH [WIDTH ...], --width WIDTH [WIDTH ...]
                         Number of variables contained from each quantor block in each clause.
+  -i Q, --innermost Q   Type of inner most quantor. Can be E or A.
 ```
 
 ### Examples
 
 ```text
 python src/gen_qbf.py 10 11 -p 2 3 2 -w 1 1 1
+python src/gen_qbf.py 10 11 -p 2 3 2 -w 1 1 1 -i A
 ```
 
 ## Solve QSAT
 
-`qdpll.py` solves QSAT for a formula given in QDIMACS.
-<!-- TODO: update when testing is available -->
+`qdpll.py` solves QSAT for a formula given in QDIMACS. Test cases are randomly generated QBFs that were checked for satisfiability with [DepQBF](http://lonsing.github.io/depqbf/).
 
 ### Usage
 
