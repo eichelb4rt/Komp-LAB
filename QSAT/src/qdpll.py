@@ -1,7 +1,9 @@
 import argparse
 from types import NoneType
 from typing import Optional
+
 from qbf import Quantor, Variable, Clause, QBF, Literal
+from test import TestAction
 
 
 def literal_true(literal: Literal, assignment: bool | NoneType) -> bool:
@@ -232,12 +234,37 @@ class QDPLLSolver:
         return None
 
 
+def test_dpll():
+    test_cases = [
+        ("qdimacs/qbf_0.txt", False),
+        ("qdimacs/qbf_1.txt", True),
+        ("qdimacs/qbf_2.txt", True),
+        ("qdimacs/qbf_3.txt", False),
+        ("qdimacs/qbf_4.txt", True),
+        ("qdimacs/qbf_5.txt", True),
+        ("qdimacs/qbf_6.txt", True),
+        ("qdimacs/qbf_7.txt", False),
+        ("qdimacs/qbf_8.txt", False),
+        ("qdimacs/qbf_9.txt", True),
+    ]
+    solver = QDPLLSolver()
+    for test_file, expected_result in test_cases:
+        result = solver.solve(QBF.from_file(test_file))
+        assert result == expected_result, f"Test case failed: {test_file} - expected {expected_result}, got {result}."
+    print("QDPLL: all tests passed.")
+
+
 def main():
     parser = argparse.ArgumentParser(description="Checks if a QBF is true (satisfiable).")
     parser.add_argument(
         "input",
         type=str,
         help="Input file where QDIMACS encoding of a formula is stored."
+    )
+    parser.add_argument(
+        "--test",
+        action=TestAction.build(test_dpll),
+        help="Tests the implementation (no other arguments needed)."
     )
     args = parser.parse_args()
     qbf = QBF.from_file(args.input)

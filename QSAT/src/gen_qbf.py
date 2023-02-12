@@ -121,6 +121,8 @@ def main():
         help="Number of variables contained from each quantor block in each clause."
     )
     args = parser.parse_args()
+    
+    # TODO: start with E or A parameter
 
     # check if arguments are viable
     if len(args.prefix) != len(args.width):

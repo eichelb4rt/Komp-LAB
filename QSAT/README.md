@@ -39,7 +39,7 @@ python src/gen_qbf.py 10 11 -p 2 3 2 -w 1 1 1
 ### Usage
 
 ```text
-usage: qdpll.py [-h] input
+usage: qdpll.py [-h] [--test] input
 
 Checks if a QBF is true (satisfiable).
 
@@ -48,10 +48,12 @@ positional arguments:
 
 options:
   -h, --help  show this help message and exit
+  --test      Tests the implementation (no other arguments needed).
 ```
 
 ### Examples
 
 ```text
 python src/qdpll.py qdimacs/qbf_0.random.txt
+python src/qdpll.py --test
 ```
