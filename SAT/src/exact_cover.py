@@ -181,6 +181,7 @@ def main():
         cnf = exact_cover_cnf(n, sets)
         out_file = f"inputs/cnf_{Path(args.filename).stem}.txt"
         cnf.write(out_file, comment=f"Exact Cover generated CNF. n={n} S={sets}")
+        print(f"CNF written to: {out_file}")
     # or just solve it
     else:
         # TODO: make naming of S/sets consistent

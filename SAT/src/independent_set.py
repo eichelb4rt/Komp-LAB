@@ -140,9 +140,9 @@ def main():
     else:
         possible, node_list = independent_set(graph, args.k)
         if possible:
-            print(f"There exists and independent node set with size {args.k}: {node_list}")
+            print(f"There exists an independent node set with size {args.k}: {node_list}")
         else:
-            print(f"There does not exist and independent node et with size {args.k}.")
+            print(f"There does not exist an independent node with size {args.k}.")
 
 
 if __name__ == "__main__":
