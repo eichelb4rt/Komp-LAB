@@ -72,8 +72,8 @@ def independent_set_cnf(graph: Graph, k: int) -> CNF:
 def test_independent_set():
     # file, max independent set, max checked k
     test_graphs = [
-        ("graphs/graph_0.txt", 3, 10),
-        ("graphs/graph_nikolaus.txt", 2, 10)
+        ("inputs/graph_0.txt", 3, 10),
+        ("inputs/graph_nikolaus.txt", 2, 10)
     ]
 
     print("Testing recursive function.")

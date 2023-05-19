@@ -176,7 +176,7 @@ def test_graphs():
     assert graph_1 != graph_3
 
     # try reading graph_0 from file and make sure it's the same as here
-    graph_0_from_file = Graph.from_file("graphs/graph_0.txt")
+    graph_0_from_file = Graph.from_file("inputs/graph_0.txt")
     assert graph_0_from_file == graph_0
 
     print("Graph test: all tests passed.")
