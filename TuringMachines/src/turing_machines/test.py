@@ -1,12 +1,13 @@
 from __future__ import annotations
+
 import argparse
 from collections.abc import Callable
 
-import tm
-import tape
-import chars
-import compress
-import transitions
+import turing_machines.chars
+import turing_machines.compress
+import turing_machines.tape
+import turing_machines.tm
+import turing_machines.transitions
 
 
 def test_action(test_function: Callable[[], None]):

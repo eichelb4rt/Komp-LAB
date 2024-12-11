@@ -4,10 +4,10 @@ import argparse
 from enum import Enum
 from typing import Generic, Self, Type, TypeVar
 
-import test
-from tape import MultiCharTape, SingleCharTape, Tape
-from display import ScrollableDisplay, Window
-from transitions import TransitionFunction, EndStates, Char, Directions, is_endstate
+import turing_machines.test as test
+from turing_machines.tape import MultiCharTape, SingleCharTape, Tape
+from turing_machines.display import ScrollableDisplay, Window
+from turing_machines.transitions import TransitionFunction, EndStates, Char, Directions, is_endstate
 
 
 class AnimationDirections(Enum):

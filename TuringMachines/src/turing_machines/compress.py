@@ -1,13 +1,14 @@
 import argparse
 import itertools
-from typing import Any
-from pathlib import Path
-from tabulate import tabulate
 from collections.abc import Iterable
+from pathlib import Path
+from typing import Any
 
-from chars import Char
-from transitions import SPECIAL_CHARS, Directions, EndStates, TransitionFunction, TransitionIn, TransitionOut, is_endstate
-import test
+from tabulate import tabulate
+
+import turing_machines.test as test
+from turing_machines.chars import Char
+from turing_machines.transitions import SPECIAL_CHARS, Directions, EndStates, TransitionFunction, TransitionIn, TransitionOut, is_endstate
 
 ################################################################
 # PLAN

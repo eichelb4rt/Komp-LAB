@@ -1,0 +1,21 @@
+[project]
+name = "turing_machines"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "tabulate>=0.9.0",
+    "tqdm>=4.67.1",
+    "dag-search",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.uv]
+dev-dependencies = ["matplotlib", "numpy"]
+
+[tool.uv.sources]
+dag-search = { path = "./dag_search" }

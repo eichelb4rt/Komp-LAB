@@ -1,10 +1,12 @@
 import os
 import re
 from enum import Enum
-from typing import Self
 from io import TextIOWrapper
+from typing import Self
+
 from tabulate import tabulate
-from chars import Char
+
+from turing_machines.chars import Char
 
 
 class EndStates(Enum):

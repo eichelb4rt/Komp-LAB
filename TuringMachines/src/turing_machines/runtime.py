@@ -1,11 +1,11 @@
 import argparse
-import numpy as np
-from typing import Self
 from pathlib import Path
+from typing import Self
+
 import matplotlib.pyplot as plt
+import numpy as np
 
-from tm import TuringMachine
-
+from turing_machines.tm import TuringMachine
 
 MAX_TICKS = 20
 IRRELEVANT_PARAM_MARGIN = 0.005
@@ -55,7 +55,10 @@ class PolyReg:
         return sb
 
 
-def measure(tm: TuringMachine, inputs: list[str]) -> list[int]:
+def measure(tm: TuringMachine, inputs: list[str], show_progress=False) -> list[int]:
+    if show_progress:
+        from tqdm import tqdm
+        return [tm.runtime(x) for x in tqdm(inputs)]
     return [tm.runtime(x) for x in inputs]
 
 

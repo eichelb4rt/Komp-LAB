@@ -1,6 +1,7 @@
 from abc import ABC, abstractmethod
-from transitions import Directions
-from chars import Char, str_to_chars, str_to_multichars, chars_to_str, multichars_to_str, str_to_multistr
+
+from turing_machines.chars import Char, chars_to_str, multichars_to_str, str_to_chars, str_to_multichars, str_to_multistr
+from turing_machines.transitions import Directions
 
 
 class Tape(ABC):
